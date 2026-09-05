@@ -13,6 +13,9 @@
 
 * { box-sizing: border-box; }
 
+/* Author display rules (e.g. .panel) must not override the hidden attribute. */
+[hidden] { display: none !important; }
+
 body {
   margin: 0;
   background: var(--bg);
