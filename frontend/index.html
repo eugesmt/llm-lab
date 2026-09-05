@@ -1,5 +1,105 @@
 <!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>LLM Lab</title></head>
-<body>LLM Lab — UI under construction</body>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LLM Lab</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>LLM Lab</h1>
+    <nav>
+      <button id="tab-chat" class="tab active" type="button">Chat</button>
+      <button id="tab-benchmark" class="tab" type="button">Benchmark</button>
+      <a class="docs-link" href="/docs" target="_blank" rel="noopener">API docs</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ============ Chat ============ -->
+    <section id="panel-chat" class="panel">
+      <div class="controls">
+        <label>
+          Model
+          <select id="chat-model"></select>
+        </label>
+        <span id="chat-provider" class="provider-badge" hidden></span>
+        <label id="chat-effort-label" hidden>
+          Reasoning effort
+          <select id="chat-effort"></select>
+        </label>
+      </div>
+
+      <textarea id="chat-prompt" rows="7" placeholder="Введите prompt…"></textarea>
+
+      <div class="actions">
+        <button id="chat-send" class="primary" type="button">Send</button>
+      </div>
+
+      <div id="chat-status" class="status" hidden></div>
+
+      <div id="chat-result" hidden>
+        <h2>Ответ</h2>
+        <pre id="chat-answer" class="answer"></pre>
+        <table class="meta">
+          <tbody>
+            <tr><th>Provider</th><td id="m-provider"></td></tr>
+            <tr><th>Model</th><td id="m-model"></td></tr>
+            <tr><th>Latency</th><td id="m-latency"></td></tr>
+            <tr><th>Prompt tokens</th><td id="m-prompt-tokens"></td></tr>
+            <tr><th>Completion tokens</th><td id="m-completion-tokens"></td></tr>
+            <tr><th>Total tokens</th><td id="m-total-tokens"></td></tr>
+            <tr><th>Reasoning tokens</th><td id="m-reasoning-tokens"></td></tr>
+            <tr><th>Finish reason</th><td id="m-finish"></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ============ Benchmark ============ -->
+    <section id="panel-benchmark" class="panel" hidden>
+      <p class="hint">Один prompt отправляется всем выбранным моделям; меняются только provider и model.</p>
+
+      <fieldset class="model-picker">
+        <legend>Модели</legend>
+        <div id="bench-models"></div>
+      </fieldset>
+
+      <div class="controls">
+        <label id="bench-effort-label" hidden>
+          Reasoning effort
+          <select id="bench-effort"></select>
+        </label>
+        <label>
+          Repeats (1–10)
+          <input id="bench-repeats" type="number" min="1" max="10" value="1">
+        </label>
+      </div>
+
+      <textarea id="bench-prompt" rows="5" placeholder="Общий prompt для всех моделей…"></textarea>
+
+      <div class="actions">
+        <button id="bench-run" class="primary" type="button">Run benchmark</button>
+      </div>
+
+      <div id="bench-status" class="status" hidden></div>
+
+      <div id="bench-result" hidden>
+        <table class="bench" id="bench-table">
+          <thead>
+            <tr>
+              <th>Model</th><th>Provider</th><th>Latency, ms</th>
+              <th>Prompt</th><th>Completion</th><th>Reasoning</th><th>Total</th>
+              <th>Cost, $</th><th>Finish</th><th>Ответ</th>
+            </tr>
+          </thead>
+          <tbody id="bench-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
 </html>
