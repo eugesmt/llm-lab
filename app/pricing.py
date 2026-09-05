@@ -22,10 +22,6 @@ class ModelPricing:
 PRICING: dict[str, ModelPricing] = {
     "deepseek-v4-flash": ModelPricing(input_per_1m=0.44, output_per_1m=1.32),
     "deepseek-v4-pro": ModelPricing(input_per_1m=1.32, output_per_1m=3.96),
-    "gpt-6-astra": ModelPricing(input_per_1m=10.0, output_per_1m=50.0),
-    "gpt-5.6-sol": ModelPricing(input_per_1m=4.0, output_per_1m=20.0),
-    "gpt-5.6-terra": ModelPricing(input_per_1m=2.0, output_per_1m=12.0),
-    "gpt-5.6-luna": ModelPricing(input_per_1m=0.20, output_per_1m=1.20),
 }
 
 

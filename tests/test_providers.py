@@ -194,6 +194,20 @@ class TestAdapters:
             asyncio.run(provider.chat(LLMRequest(model="test-model", prompt="hi")))
 
 
+def test_deepseek_none_effort_disables_thinking() -> None:
+    completions = FakeCompletions(make_completion())
+    provider = DeepSeekProvider(api_key="sk-test", timeout_s=5, client=FakeClient(completions))
+
+    response = asyncio.run(
+        provider.chat(LLMRequest(model="test-model", prompt="hi", reasoning_effort="none"))
+    )
+
+    # "none" maps to the thinking toggle, not to an effort value.
+    assert "reasoning_effort" not in completions.kwargs
+    assert completions.kwargs["extra_body"] == {"thinking": {"type": "disabled"}}
+    assert response.answer == "mock answer"
+
+
 def test_missing_api_key_is_not_configured() -> None:
     with pytest.raises(ProviderNotConfiguredError):
         asyncio.run(

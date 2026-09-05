@@ -18,10 +18,10 @@ def test_cost_for_known_model() -> None:
 
 def test_cost_for_small_usage() -> None:
     usage = Usage(prompt_tokens=500, completion_tokens=900, total_tokens=1400)
-    cost = estimate_cost("gpt-5.6-luna", usage)
+    cost = estimate_cost("deepseek-v4-flash", usage)
     assert cost is not None
-    assert cost.input_cost == round(500 / 1_000_000 * 0.20, 6)
-    assert cost.output_cost == round(900 / 1_000_000 * 1.20, 6)
+    assert cost.input_cost == round(500 / 1_000_000 * 0.44, 6)
+    assert cost.output_cost == round(900 / 1_000_000 * 1.32, 6)
     assert cost.total_cost == round(cost.input_cost + cost.output_cost, 6)
 
 

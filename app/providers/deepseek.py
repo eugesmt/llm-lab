@@ -50,10 +50,14 @@ class DeepSeekProvider:
     async def chat(self, request: LLMRequest) -> LLMResponse:
         client = self._get_client()
 
-        extra_kwargs: dict[str, str] = {}
-        if request.reasoning_effort is not None:
-            # DeepSeek accepts reasoning_effort (low/high/max effective values);
-            # thinking mode is enabled by default server-side.
+        extra_kwargs: dict[str, object] = {}
+        if request.reasoning_effort == "none":
+            # Fully disable thinking: DeepSeek represents this via the thinking
+            # toggle, not via an effort value (thinking is on by default).
+            extra_kwargs["extra_body"] = {"thinking": {"type": "disabled"}}
+        elif request.reasoning_effort is not None:
+            # Effective effort values are low/high/max; medium/xhigh map to
+            # high server-side.
             extra_kwargs["reasoning_effort"] = request.reasoning_effort
 
         start = perf_counter()

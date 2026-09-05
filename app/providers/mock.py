@@ -44,7 +44,7 @@ class MockProvider:
                 prompt_tokens=prompt_tokens,
                 completion_tokens=completion_tokens,
                 total_tokens=prompt_tokens + completion_tokens,
-                reasoning_tokens=3 if request.reasoning_effort is not None else None,
+                reasoning_tokens=(3 if request.reasoning_effort not in (None, "none") else None),
             ),
             latency_ms=latency_ms,
             finish_reason="stop",

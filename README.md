@@ -66,7 +66,7 @@ cp .env.example .env
 | Переменная | Назначение |
 |---|---|
 | `DEEPSEEK_API_KEY` | ключ DeepSeek (модели `deepseek-v4-*`) |
-| `OPENAI_API_KEY` | ключ OpenAI (модели `gpt-6-astra`, `gpt-5.6-*`) |
+| `OPENAI_API_KEY` | ключ OpenAI (адаптер готов; моделей в каталоге пока нет) |
 | `ANTHROPIC_API_KEY` | зарезервировано на будущее |
 | `REQUEST_TIMEOUT_S` | общий timeout запроса, сек (по умолчанию `120`) |
 | `HOST`, `PORT` | адрес сервера (`127.0.0.1`, `8000`) |
@@ -114,6 +114,8 @@ curl -X POST http://127.0.0.1:8000/api/chat \
 
 Модели и их цены: `app/catalog.py` и `app/pricing.py` (цены официальные, на 2026-09; если цены нет — cost будет `null`, значения не выдумываются).
 
+`reasoning_effort: "none"` полностью отключает размышления: для DeepSeek адаптер отправляет `thinking: {"type": "disabled"}`, для OpenAI — передаёт `none` как есть (где модель это поддерживает).
+
 ## Как добавить нового провайдера
 
 1. Создайте `app/providers/new_provider.py` с классом, реализующим протокол из `app/providers/base.py`:
@@ -121,6 +123,7 @@ curl -X POST http://127.0.0.1:8000/api/chat \
    ```python
    class NewProvider:
        name = "new"
+
        async def chat(self, request: LLMRequest) -> LLMResponse: ...
    ```
 
@@ -152,7 +155,7 @@ uv run pytest -m integration   # реальные API (нужны DEEPSEEK_API_K
 ```bash
 curl -X POST http://127.0.0.1:8000/api/benchmark \
   -H "Content-Type: application/json" \
-  -d '{"prompt": "Ваш вопрос", "models": ["deepseek-v4-flash", "gpt-5.6-luna"], "reasoning_effort": "low", "repeats": 3}'
+  -d '{"prompt": "Ваш вопрос", "models": ["deepseek-v4-flash", "deepseek-v4-pro"], "reasoning_effort": "low", "repeats": 3}'
 ```
 
 Методология: все модели получают **идентичный prompt** и одинаковую конфигурацию reasoning; меняются только provider и model. Прогоны выполняются последовательно, чтобы latency не искажалась параллельной нагрузкой. Ошибка одной модели не отменяет benchmark — она фиксируется в строке результата этой модели.
