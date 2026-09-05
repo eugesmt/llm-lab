@@ -22,5 +22,4 @@ class LLMProvider(Protocol):
 
     name: str
 
-    async def chat(self, request: LLMRequest) -> LLMResponse:
-        ...
+    async def chat(self, request: LLMRequest) -> LLMResponse: ...

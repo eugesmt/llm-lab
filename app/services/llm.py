@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from app.errors import (
+    EmptyResponseError,
     ModelNotFoundError,
     ProviderNotConfiguredError,
     ProviderTimeoutError,
@@ -69,7 +70,7 @@ class LLMService:
         request = LLMRequest(model=model, prompt=prompt, reasoning_effort=reasoning_effort)
         try:
             async with asyncio.timeout(self._request_timeout_s):
-                return await provider.chat(request)
+                response = await provider.chat(request)
         except TimeoutError as exc:
             # asyncio.timeout turns cancellation into TimeoutError; provider
             # calls are cancelled through the same context. A CancelledError
@@ -77,3 +78,7 @@ class LLMService:
             raise ProviderTimeoutError(
                 f"Request to '{model}' timed out after {self._request_timeout_s} s"
             ) from exc
+
+        if not response.answer.strip():
+            raise EmptyResponseError(f"Provider returned an empty answer for '{model}'")
+        return response
