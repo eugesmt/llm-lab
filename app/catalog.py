@@ -27,12 +27,47 @@ MODEL_CATALOG: list[ModelInfo] = [
         thinking_supported=True,
         reasoning_effort=["none", "low", "high", "max"],
     ),
-    # Free OpenRouter model (rate-limited instead of priced). Add more
-    # OpenRouter models here as "<vendor>/<model>:free" when needed.
+    # Free OpenRouter models (rate-limited instead of priced). Full list:
+    # https://openrouter.ai/models?variant=free  (add as "<vendor>/<model>:free").
     ModelInfo(
         id="inclusionai/ling-3.0-flash-sante:free",
         provider="openrouter",
         display_name="Ling 3.0 Flash Sante (free)",
+        thinking_supported=True,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
+        id="liquid/lfm-2.5-2.6b:free",
+        provider="openrouter",
+        display_name="LFM 2.5 2.6B (free)",
+        thinking_supported=False,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
+        id="google/gemma-4-31b-it:free",
+        provider="openrouter",
+        display_name="Gemma 4 31B (free)",
+        thinking_supported=False,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
+        id="minimax/minimax-m3:free",
+        provider="openrouter",
+        display_name="MiniMax M3 (free)",
+        thinking_supported=True,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
+        id="nvidia/nemotron-3-ultra-550b-a55b:free",
+        provider="openrouter",
+        display_name="Nemotron 3 Ultra 550B (free)",
+        thinking_supported=True,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
+        id="z-ai/glm-5.2:free",
+        provider="openrouter",
+        display_name="GLM 5.2 (free)",
         thinking_supported=True,
         reasoning_effort=[],
     ),
