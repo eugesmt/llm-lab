@@ -27,4 +27,13 @@ MODEL_CATALOG: list[ModelInfo] = [
         thinking_supported=True,
         reasoning_effort=["none", "low", "high", "max"],
     ),
+    # Free OpenRouter model (rate-limited instead of priced). Add more
+    # OpenRouter models here as "<vendor>/<model>:free" when needed.
+    ModelInfo(
+        id="inclusionai/ling-3.0-flash-sante:free",
+        provider="openrouter",
+        display_name="Ling 3.0 Flash Sante (free)",
+        thinking_supported=True,
+        reasoning_effort=[],
+    ),
 ]

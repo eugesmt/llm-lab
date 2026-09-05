@@ -24,6 +24,7 @@ from app.errors import AppError
 from app.providers.base import LLMProvider
 from app.providers.deepseek import DeepSeekProvider
 from app.providers.openai import OpenAIProvider
+from app.providers.openrouter import OpenRouterProvider
 from app.schemas.model import ModelInfo
 from app.services.benchmark import BenchmarkService
 from app.services.llm import LLMService
@@ -70,6 +71,12 @@ def create_app(
             "openai": OpenAIProvider(
                 api_key=settings.openai_api_key.get_secret_value()
                 if settings.openai_api_key
+                else None,
+                timeout_s=settings.request_timeout_s,
+            ),
+            "openrouter": OpenRouterProvider(
+                api_key=settings.openrouter_api_key.get_secret_value()
+                if settings.openrouter_api_key
                 else None,
                 timeout_s=settings.request_timeout_s,
             ),

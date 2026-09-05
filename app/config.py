@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     deepseek_api_key: SecretStr | None = None
     openai_api_key: SecretStr | None = None
+    openrouter_api_key: SecretStr | None = None
     # Reserved for a future Anthropic provider adapter; not used yet.
     anthropic_api_key: SecretStr | None = None
 

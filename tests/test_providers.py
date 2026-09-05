@@ -31,6 +31,7 @@ from app.errors import (
 from app.providers.deepseek import DeepSeekProvider
 from app.providers.mock import MockProvider
 from app.providers.openai import OpenAIProvider
+from app.providers.openrouter import OpenRouterProvider
 from app.schemas.llm import LLMRequest
 
 URL = "https://api.test/v1/x"
@@ -208,6 +209,28 @@ def test_deepseek_none_effort_disables_thinking() -> None:
     assert response.answer == "mock answer"
 
 
+def test_openrouter_request_shape() -> None:
+    completions = FakeCompletions(make_completion())
+    provider = OpenRouterProvider(api_key="sk-or-test", timeout_s=5, client=FakeClient(completions))
+
+    response = asyncio.run(
+        provider.chat(LLMRequest(model="vendor/model:free", prompt="hi", reasoning_effort="low"))
+    )
+    assert completions.kwargs["model"] == "vendor/model:free"
+    assert completions.kwargs["reasoning_effort"] == "low"
+    assert response.provider == "openrouter"
+
+
+def test_openrouter_none_effort_is_not_sent() -> None:
+    completions = FakeCompletions(make_completion())
+    provider = OpenRouterProvider(api_key="sk-or-test", timeout_s=5, client=FakeClient(completions))
+
+    asyncio.run(
+        provider.chat(LLMRequest(model="vendor/model:free", prompt="hi", reasoning_effort="none"))
+    )
+    assert "reasoning_effort" not in completions.kwargs
+
+
 def test_missing_api_key_is_not_configured() -> None:
     with pytest.raises(ProviderNotConfiguredError):
         asyncio.run(
@@ -216,6 +239,10 @@ def test_missing_api_key_is_not_configured() -> None:
     with pytest.raises(ProviderNotConfiguredError):
         asyncio.run(
             OpenAIProvider(api_key=None, timeout_s=5).chat(LLMRequest(model="m", prompt="p"))
+        )
+    with pytest.raises(ProviderNotConfiguredError):
+        asyncio.run(
+            OpenRouterProvider(api_key=None, timeout_s=5).chat(LLMRequest(model="m", prompt="p"))
         )
 
 
