@@ -29,6 +29,10 @@
           Reasoning effort
           <select id="chat-effort"></select>
         </label>
+        <label class="checkbox-option" title="Разрешить модели получать текущие данные ОС через Task Manager MCP">
+          <input id="chat-use-mcp" type="checkbox">
+          Task Manager MCP
+        </label>
       </div>
 
       <textarea id="chat-prompt" rows="7" placeholder="Введите prompt…"></textarea>
@@ -52,6 +56,7 @@
             <tr><th>Total tokens</th><td id="m-total-tokens"></td></tr>
             <tr><th>Reasoning tokens</th><td id="m-reasoning-tokens"></td></tr>
             <tr><th>Finish reason</th><td id="m-finish"></td></tr>
+            <tr><th>MCP tools used</th><td id="m-mcp-tools"></td></tr>
           </tbody>
         </table>
       </div>

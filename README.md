@@ -1,6 +1,6 @@
 # LLM Lab
 
-Веб-приложение для работы с несколькими LLM-провайдерами (DeepSeek, OpenAI) через единый интерфейс: выбор модели, настройка reasoning effort, измерение latency и token usage, а также benchmark одного prompt на нескольких моделях.
+Веб-приложение для работы с несколькими LLM-провайдерами (DeepSeek, OpenAI) через единый интерфейс: выбор модели, настройка reasoning effort, измерение latency и token usage, benchmark одного prompt на нескольких моделях и подключение инструментов Task Manager через MCP.
 
 Проект подходит как для обучения работе с LLM API, так и как основа для дальнейшего расширения.
 
@@ -16,15 +16,18 @@
             Pydantic schemas
                 │
            LLMService
-                │
-         LLMProvider (Protocol)
-                │
-        ┌───────┴────────┐
-        ▼                ▼
- DeepSeekProvider   OpenAIProvider
-        │                │
-        ▼                ▼
-   DeepSeek API      OpenAI API
+           │         │
+           │         └── MCP client ── Streamable HTTP ──► :8090/mcp
+           │                                                  │
+           ▼                                                  ▼
+    LLMProvider (Protocol)                           Task Manager API :8080
+           │
+    ┌──────┴────────┐
+    ▼               ▼
+DeepSeekProvider OpenAIProvider
+    │               │
+    ▼               ▼
+DeepSeek API     OpenAI API
 ```
 
 Главный принцип: **application code не зависит от SDK провайдера**. Импорты `openai` (используется и для DeepSeek — их API OpenAI-совместим) находятся только внутри `app/providers/`. Новый провайдер добавляется одним файлом в `app/providers/`, без изменений в API, UI, benchmark или бизнес-логике.
@@ -69,6 +72,9 @@ cp .env.example .env
 | `OPENAI_API_KEY` | ключ OpenAI (адаптер готов; моделей в каталоге пока нет) |
 | `ANTHROPIC_API_KEY` | зарезервировано на будущее |
 | `REQUEST_TIMEOUT_S` | общий timeout запроса, сек (по умолчанию `120`) |
+| `TASKMANAGER_MCP_URL` | Streamable HTTP endpoint (`http://127.0.0.1:8090/mcp`) |
+| `MCP_TIMEOUT_S` | timeout одной MCP-операции, сек (по умолчанию `30`) |
+| `MCP_MAX_ROUNDS` | предел циклов модель → инструмент (по умолчанию `4`) |
 | `HOST`, `PORT` | адрес сервера (`127.0.0.1`, `8000`) |
 
 Ключи не хранятся в коде/Git и не логируются (читаются как `SecretStr`).
@@ -88,7 +94,7 @@ uv run llm-lab
 | Endpoint | Описание |
 |---|---|
 | `GET /api/models` | каталог моделей с capabilities (`thinking_supported`, допустимый `reasoning_effort`) |
-| `POST /api/chat` | prompt → одной модели; ответ содержит `answer`, `latency_ms`, `usage`, `finish_reason` |
+| `POST /api/chat` | prompt → одной модели; опционально с Task Manager MCP |
 | `POST /api/benchmark` | один prompt → нескольким моделям (+ `repeats` 1–10); ошибки isolate по запускам |
 
 Пример:
@@ -96,7 +102,7 @@ uv run llm-lab
 ```bash
 curl -X POST http://127.0.0.1:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"model": "deepseek-v4-flash", "prompt": "Привет!", "reasoning_effort": "low"}'
+  -d '{"model": "deepseek-v4-flash", "prompt": "Привет!", "reasoning_effort": "low", "use_taskmanager_mcp": false}'
 ```
 
 Ответ:
@@ -108,9 +114,54 @@ curl -X POST http://127.0.0.1:8000/api/chat \
   "answer": "...",
   "usage": {"prompt_tokens": 10, "completion_tokens": 25, "total_tokens": 35, "reasoning_tokens": null},
   "latency_ms": 812.4,
-  "finish_reason": "stop"
+  "finish_reason": "stop",
+  "mcp_tools_used": []
 }
 ```
+
+## Task Manager MCP
+
+MCP используется только когда в запросе передано `"use_taskmanager_mcp": true` или включён флажок **Task Manager MCP** в UI. Обычный chat и benchmark не требуют запущенного MCP.
+
+Запустите три процесса в отдельных терминалах.
+
+1. Task Manager API:
+
+   ```bash
+   cd /home/lab-dev/Projects/taskmanager-ai
+   go run ./cmd/server
+   ```
+
+2. Сетевой MCP-сервер:
+
+   ```bash
+   cd /home/lab-dev/Projects/taskmanager-ai
+   go build -o /tmp/taskmanager-mcp ./cmd/taskmanager-mcp
+   TASKMANAGER_MCP_TRANSPORT=http \
+   TASKMANAGER_MCP_ADDR=127.0.0.1:8090 \
+   TASKMANAGER_API_URL=http://127.0.0.1:8080 \
+   /tmp/taskmanager-mcp
+   ```
+
+3. `llm-lab`:
+
+   ```bash
+   cd /home/lab-dev/Projects/llm-lab
+   uv sync
+   uv run llm-lab
+   ```
+
+Откройте <http://127.0.0.1:8000/>, включите **Task Manager MCP** и задайте, например: «Какие процессы сейчас больше всего нагружают CPU?». Модель получает схемы `get_system_overview`, `get_top_processes` и `get_resource_history`, сама выбирает инструмент, а backend исполняет только имя из опубликованного MCP-списка. В таблице ответа поле `MCP tools used` подтверждает фактический вызов.
+
+Тот же тест через API:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"model":"deepseek-v4-flash","prompt":"Покажи 5 процессов с максимальной загрузкой CPU","reasoning_effort":"low","use_taskmanager_mcp":true}'
+```
+
+Если MCP или Task Manager API не запущен, запрос с включённым флагом вернёт контролируемую ошибку `502`; обычный чат продолжит работать.
 
 Модели и их цены: `app/catalog.py` и `app/pricing.py` (цены официальные, на 2026-09; если цены нет — cost будет `null`, значения не выдумываются).
 

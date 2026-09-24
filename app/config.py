@@ -7,7 +7,7 @@ into logs or repr output.
 
 from __future__ import annotations
 
-from pydantic import SecretStr
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     # Single timeout for the whole chain: HTTP request -> application context
     # -> provider call (provider SDK clients receive the same value).
     request_timeout_s: float = 120.0
+
+    taskmanager_mcp_url: str = "http://127.0.0.1:8090/mcp"
+    mcp_timeout_s: float = 30.0
+    mcp_max_rounds: int = Field(default=4, ge=2, le=10)
 
     host: str = "127.0.0.1"
     port: int = 8000

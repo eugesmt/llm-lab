@@ -21,6 +21,7 @@ from app.api import chat as chat_api
 from app.api import models as models_api
 from app.config import Settings
 from app.errors import AppError
+from app.mcp.client import MCPClient, TaskManagerMCPClient
 from app.providers.base import LLMProvider
 from app.providers.deepseek import DeepSeekProvider
 from app.providers.openai import OpenAIProvider
@@ -56,6 +57,7 @@ def create_app(
     settings: Settings | None = None,
     catalog: Sequence[ModelInfo] | None = None,
     providers: Mapping[str, LLMProvider] | None = None,
+    taskmanager_mcp: MCPClient | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     catalog = catalog if catalog is not None else catalog_module.MODEL_CATALOG
@@ -82,10 +84,18 @@ def create_app(
             ),
         }
 
+    if taskmanager_mcp is None:
+        taskmanager_mcp = TaskManagerMCPClient(
+            url=settings.taskmanager_mcp_url,
+            timeout_s=settings.mcp_timeout_s,
+        )
+
     llm_service = LLMService(
         providers=providers,
         catalog=catalog,
         request_timeout_s=settings.request_timeout_s,
+        taskmanager_mcp=taskmanager_mcp,
+        mcp_max_rounds=settings.mcp_max_rounds,
     )
 
     app = FastAPI(title="LLM Lab", version="0.1.0")

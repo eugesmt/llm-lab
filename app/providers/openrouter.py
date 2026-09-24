@@ -14,9 +14,14 @@ from time import perf_counter
 from openai import AsyncOpenAI
 
 from app.errors import ProviderNotConfiguredError
-from app.schemas.llm import LLMRequest, LLMResponse
+from app.schemas.llm import LLMRequest, LLMResponse, ToolCompletionRequest, ToolCompletionResponse
 
-from ._openai_compat import parse_completion, translate_openai_error
+from ._openai_compat import (
+    build_tool_completion_payload,
+    parse_completion,
+    parse_tool_completion,
+    translate_openai_error,
+)
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 PROVIDER_LABEL = "OpenRouter"
@@ -47,15 +52,16 @@ class OpenRouterProvider:
             )
         return self._client
 
+    @staticmethod
+    def _reasoning_kwargs(reasoning_effort: str | None) -> dict[str, object]:
+        if reasoning_effort is not None and reasoning_effort != "none":
+            return {"reasoning_effort": reasoning_effort}
+        return {}
+
     async def chat(self, request: LLMRequest) -> LLMResponse:
         client = self._get_client()
 
-        extra_kwargs: dict[str, str] = {}
-        if request.reasoning_effort is not None and request.reasoning_effort != "none":
-            # OpenRouter forwards reasoning_effort to models that support it;
-            # "none" means "no thinking", which is the default for models
-            # without reasoning, so it is simply not sent.
-            extra_kwargs["reasoning_effort"] = request.reasoning_effort
+        extra_kwargs = self._reasoning_kwargs(request.reasoning_effort)
 
         start = perf_counter()
         try:
@@ -76,4 +82,26 @@ class OpenRouterProvider:
             usage=usage,
             latency_ms=latency_ms,
             finish_reason=finish_reason,
+        )
+
+    async def complete(self, request: ToolCompletionRequest) -> ToolCompletionResponse:
+        client = self._get_client()
+        extra_kwargs = build_tool_completion_payload(request)
+        extra_kwargs.update(self._reasoning_kwargs(request.reasoning_effort))
+
+        start = perf_counter()
+        try:
+            completion = await client.chat.completions.create(
+                model=request.model,
+                **extra_kwargs,
+            )
+        except Exception as exc:
+            raise translate_openai_error(exc, PROVIDER_LABEL) from exc
+
+        return parse_tool_completion(
+            completion=completion,
+            provider_name=self.name,
+            provider_label=PROVIDER_LABEL,
+            model=request.model,
+            latency_ms=(perf_counter() - start) * 1000,
         )

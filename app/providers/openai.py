@@ -11,9 +11,19 @@ from time import perf_counter
 from openai import AsyncOpenAI
 
 from app.errors import ProviderNotConfiguredError
-from app.schemas.llm import LLMRequest, LLMResponse
+from app.schemas.llm import (
+    LLMRequest,
+    LLMResponse,
+    ToolCompletionRequest,
+    ToolCompletionResponse,
+)
 
-from ._openai_compat import parse_completion, translate_openai_error
+from ._openai_compat import (
+    build_tool_completion_payload,
+    parse_completion,
+    parse_tool_completion,
+    translate_openai_error,
+)
 
 PROVIDER_LABEL = "OpenAI"
 
@@ -71,4 +81,27 @@ class OpenAIProvider:
             usage=usage,
             latency_ms=latency_ms,
             finish_reason=finish_reason,
+        )
+
+    async def complete(self, request: ToolCompletionRequest) -> ToolCompletionResponse:
+        client = self._get_client()
+        extra_kwargs: dict[str, object] = build_tool_completion_payload(request)
+        if request.reasoning_effort is not None:
+            extra_kwargs["reasoning_effort"] = request.reasoning_effort
+
+        start = perf_counter()
+        try:
+            completion = await client.chat.completions.create(
+                model=request.model,
+                **extra_kwargs,
+            )
+        except Exception as exc:
+            raise translate_openai_error(exc, PROVIDER_LABEL) from exc
+
+        return parse_tool_completion(
+            completion=completion,
+            provider_name=self.name,
+            provider_label=PROVIDER_LABEL,
+            model=request.model,
+            latency_ms=(perf_counter() - start) * 1000,
         )

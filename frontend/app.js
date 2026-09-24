@@ -156,6 +156,7 @@ async function sendChat() {
 
   try {
     const payload = { model: model.id, prompt };
+    payload.use_taskmanager_mcp = $("chat-use-mcp").checked;
     if ($("chat-effort").value && !$("chat-effort").disabled) {
       payload.reasoning_effort = $("chat-effort").value;
     }
@@ -175,6 +176,7 @@ async function sendChat() {
     setCell("m-total-tokens", usage.total_tokens);
     setCell("m-reasoning-tokens", usage.reasoning_tokens);
     setCell("m-finish", data.finish_reason);
+    setCell("m-mcp-tools", (data.mcp_tools_used || []).join(", "));
     status.hidden = true;
     result.hidden = false;
   } catch (err) {

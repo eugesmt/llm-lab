@@ -4,7 +4,9 @@ These models are our own and intentionally independent of any provider SDK:
 adapters convert provider-specific payloads into them and back.
 """
 
-from pydantic import BaseModel
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
 
 
 class Usage(BaseModel):
@@ -26,6 +28,44 @@ class LLMRequest(BaseModel):
     reasoning_effort: str | None = None
 
 
+class ToolDefinition(BaseModel):
+    name: str
+    description: str | None = None
+    input_schema: dict[str, Any] = Field(default_factory=dict)
+
+
+class ToolCall(BaseModel):
+    id: str
+    name: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class LLMMessage(BaseModel):
+    role: Literal["system", "user", "assistant", "tool"]
+    content: str | None = None
+    tool_calls: list[ToolCall] = Field(default_factory=list)
+    tool_call_id: str | None = None
+    reasoning_content: str | None = None
+
+
+class ToolCompletionRequest(BaseModel):
+    model: str
+    messages: list[LLMMessage]
+    tools: list[ToolDefinition]
+    reasoning_effort: str | None = None
+
+
+class ToolCompletionResponse(BaseModel):
+    provider: str
+    model: str
+    content: str | None = None
+    tool_calls: list[ToolCall] = Field(default_factory=list)
+    reasoning_content: str | None = None
+    usage: Usage | None = None
+    latency_ms: float
+    finish_reason: str | None = None
+
+
 class LLMResponse(BaseModel):
     provider: str
     model: str
@@ -33,3 +73,4 @@ class LLMResponse(BaseModel):
     usage: Usage | None = None
     latency_ms: float
     finish_reason: str | None = None
+    mcp_tools_used: list[str] = Field(default_factory=list)

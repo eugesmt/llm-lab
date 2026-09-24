@@ -13,3 +13,4 @@ class ChatRequest(BaseModel):
     model: str = Field(min_length=1, examples=["deepseek-v4-flash"])
     prompt: str = Field(min_length=1)
     reasoning_effort: str | None = Field(default=None, examples=["low"])
+    use_taskmanager_mcp: bool = False

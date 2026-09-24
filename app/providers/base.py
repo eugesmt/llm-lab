@@ -12,9 +12,9 @@ on — never a concrete SDK. Adapters implementing this protocol must:
 
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
-from app.schemas.llm import LLMRequest, LLMResponse
+from app.schemas.llm import LLMRequest, LLMResponse, ToolCompletionRequest, ToolCompletionResponse
 
 
 class LLMProvider(Protocol):
@@ -23,3 +23,10 @@ class LLMProvider(Protocol):
     name: str
 
     async def chat(self, request: LLMRequest) -> LLMResponse: ...
+
+
+@runtime_checkable
+class ToolCallingProvider(LLMProvider, Protocol):
+    """Provider adapter capable of returning model-requested tool calls."""
+
+    async def complete(self, request: ToolCompletionRequest) -> ToolCompletionResponse: ...

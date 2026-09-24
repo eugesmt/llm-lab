@@ -15,8 +15,13 @@ from openai import (
     NotFoundError,
     RateLimitError,
 )
-from openai.types.chat import ChatCompletion, ChatCompletionMessage
+from openai.types.chat import (
+    ChatCompletion,
+    ChatCompletionMessage,
+    ChatCompletionMessageFunctionToolCall,
+)
 from openai.types.chat.chat_completion import Choice
+from openai.types.chat.chat_completion_message_function_tool_call import Function
 from openai.types.completion_usage import CompletionTokensDetails, CompletionUsage
 
 from app.errors import (
@@ -32,7 +37,7 @@ from app.providers.deepseek import DeepSeekProvider
 from app.providers.mock import MockProvider
 from app.providers.openai import OpenAIProvider
 from app.providers.openrouter import OpenRouterProvider
-from app.schemas.llm import LLMRequest
+from app.schemas.llm import LLMMessage, LLMRequest, ToolCompletionRequest, ToolDefinition
 
 URL = "https://api.test/v1/x"
 
@@ -280,3 +285,41 @@ def test_mock_provider_latency_and_usage() -> None:
     assert response.usage is not None
     assert response.usage.prompt_tokens == 3
     assert response.finish_reason == "stop"
+
+
+def test_openai_tool_completion_mapping() -> None:
+    completion = make_completion(content=None, finish_reason="tool_calls")
+    completion.choices[0].message.tool_calls = [
+        ChatCompletionMessageFunctionToolCall(
+            id="call-1",
+            type="function",
+            function=Function(name="get_top_processes", arguments='{"limit": 3}'),
+        )
+    ]
+    completions = FakeCompletions(completion)
+    provider = OpenAIProvider(api_key="sk-test", timeout_s=5, client=FakeClient(completions))
+
+    response = asyncio.run(
+        provider.complete(
+            ToolCompletionRequest(
+                model="test-model",
+                messages=[LLMMessage(role="user", content="top processes")],
+                tools=[
+                    ToolDefinition(
+                        name="get_top_processes",
+                        description="Top OS processes",
+                        input_schema={
+                            "type": "object",
+                            "properties": {"limit": {"type": "integer"}},
+                        },
+                    )
+                ],
+            )
+        )
+    )
+
+    assert completions.kwargs["messages"] == [{"role": "user", "content": "top processes"}]
+    assert completions.kwargs["tools"][0]["function"]["name"] == "get_top_processes"
+    assert response.content is None
+    assert response.tool_calls[0].name == "get_top_processes"
+    assert response.tool_calls[0].arguments == {"limit": 3}

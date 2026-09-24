@@ -54,3 +54,15 @@ class ProviderRequestError(AppError):
     """Provider rejected the request or returned an unexpected payload."""
 
     status_code = 502
+
+
+class MCPUnavailableError(AppError):
+    status_code = 502
+
+
+class MCPToolError(AppError):
+    status_code = 502
+
+
+class MCPAgentLoopError(AppError):
+    status_code = 502

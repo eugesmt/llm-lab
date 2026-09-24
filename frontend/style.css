@@ -65,6 +65,9 @@ main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
 
 label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
 
+.checkbox-option { flex-direction: row; align-items: center; align-self: center; gap: 8px; }
+.checkbox-option input { margin: 0; }
+
 select, input, textarea {
   background: var(--bg);
   color: var(--text);
