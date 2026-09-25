@@ -7,7 +7,7 @@ into logs or repr output.
 
 from __future__ import annotations
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -26,7 +26,16 @@ class Settings(BaseSettings):
 
     taskmanager_mcp_url: str = "http://127.0.0.1:8090/mcp"
     mcp_timeout_s: float = 30.0
-    mcp_max_rounds: int = Field(default=4, ge=2, le=10)
+    mcp_max_rounds: int = Field(default=10, ge=2, le=10)
+
+    obsidian_mcp_url: str | None = None
+    obsidian_mcp_api_key: SecretStr | None = None
+
+    @model_validator(mode="after")
+    def validate_obsidian_mcp_settings(self) -> Settings:
+        if (self.obsidian_mcp_url is None) != (self.obsidian_mcp_api_key is None):
+            raise ValueError("obsidian_mcp_url and obsidian_mcp_api_key must be set together")
+        return self
 
     host: str = "127.0.0.1"
     port: int = 8000

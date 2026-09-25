@@ -30,8 +30,12 @@
           <select id="chat-effort"></select>
         </label>
         <label class="checkbox-option" title="Разрешить модели получать текущие данные ОС через Task Manager MCP">
-          <input id="chat-use-mcp" type="checkbox">
+          <input id="chat-use-taskmanager-mcp" type="checkbox">
           Task Manager MCP
+        </label>
+        <label class="checkbox-option" title="Разрешить модели использовать Obsidian MCP">
+          <input id="chat-use-obsidian-mcp" type="checkbox">
+          Obsidian MCP
         </label>
       </div>
 
@@ -47,6 +51,10 @@
         <h2>Ответ</h2>
         <pre id="chat-answer" class="answer"></pre>
         <div id="chat-artifacts" class="artifacts" hidden></div>
+        <div id="chat-mcp-trace" class="mcp-trace" hidden>
+          <h2>MCP trace</h2>
+          <ol id="chat-mcp-trace-list"></ol>
+        </div>
         <table class="meta">
           <tbody>
             <tr><th>Provider</th><td id="m-provider"></td></tr>

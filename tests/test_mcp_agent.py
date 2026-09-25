@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 import pytest
 
 from app.api.chat import chat
-from app.errors import MCPAgentLoopError, MCPToolError
+from app.errors import MCPAgentLoopError, MCPToolError, MCPUnavailableError
 from app.schemas.chat import ChatRequest
 from app.schemas.llm import (
     LLMRequest,
@@ -44,6 +44,45 @@ class FakeMCPConnection:
 class FakeMCPClient:
     def __init__(self, tool_result: str | None = None) -> None:
         self.connection = FakeMCPConnection(tool_result)
+
+    @asynccontextmanager
+    async def connect(self):  # type: ignore[no-untyped-def]
+        yield self.connection
+
+
+class NamedMCPConnection(FakeMCPConnection):
+    def __init__(self, tool_name: str) -> None:
+        super().__init__()
+        self.tool_name = tool_name
+
+    async def list_tools(self) -> list[ToolDefinition]:
+        return [ToolDefinition(name=self.tool_name, input_schema={"type": "object"})]
+
+
+class NamedMCPClient:
+    def __init__(self, tool_name: str) -> None:
+        self.connection = NamedMCPConnection(tool_name)
+
+    @asynccontextmanager
+    async def connect(self):  # type: ignore[no-untyped-def]
+        yield self.connection
+
+
+class ToolSetMCPConnection(FakeMCPConnection):
+    def __init__(self, tool_names: list[str]) -> None:
+        super().__init__()
+        self.tool_names = tool_names
+
+    async def list_tools(self) -> list[ToolDefinition]:
+        return [
+            ToolDefinition(name=name, input_schema={"type": "object"})
+            for name in self.tool_names
+        ]
+
+
+class ToolSetMCPClient:
+    def __init__(self, tool_names: list[str]) -> None:
+        self.connection = ToolSetMCPConnection(tool_names)
 
     @asynccontextmanager
     async def connect(self):  # type: ignore[no-untyped-def]
@@ -120,7 +159,9 @@ async def test_agent_calls_mcp_and_returns_model_answer() -> None:
     second_messages = provider.requests[1].messages
     assert second_messages[-1].role == "tool"
     assert "17.5" in (second_messages[-1].content or "")
-    assert {tool.name for tool in provider.requests[0].tools} == {"get_system_overview"}
+    assert {tool.name for tool in provider.requests[0].tools} == {
+        "taskmanager__get_system_overview"
+    }
 
 
 @pytest.mark.asyncio
@@ -173,7 +214,7 @@ async def test_agent_stops_repeated_tool_loop() -> None:
         await make_service(provider, mcp, rounds=2).chat(
             model="mock-fast", prompt="loop", use_taskmanager_mcp=True
         )
-    assert len(mcp.connection.calls) == 1
+    assert len(mcp.connection.calls) == 2
 
 
 @pytest.mark.asyncio
@@ -194,3 +235,114 @@ async def test_chat_api_flag_enables_mcp_agent() -> None:
     )
     assert response.answer == "Система работает нормально."
     assert mcp.connection.calls == [("get_system_overview", {})]
+
+
+@pytest.mark.asyncio
+async def test_multi_server_aliases_route_and_trace_in_order() -> None:
+    provider = ScriptedProvider(
+        [
+            turn(tool_name="alpha__status"),
+            turn(tool_name="beta__status"),
+            turn(content="Готово."),
+        ]
+    )
+    alpha = NamedMCPClient("status")
+    beta = NamedMCPClient("status")
+    service = LLMService(
+        providers={"mock": provider},
+        catalog=MOCK_CATALOG,
+        request_timeout_s=5,
+        mcp_servers={"alpha": alpha, "beta": beta},
+        mcp_max_rounds=4,
+    )
+
+    response = await service.chat(
+        model="mock-fast", prompt="Проверь оба сервера", mcp_servers=["alpha", "beta"]
+    )
+
+    assert [tool.name for tool in provider.requests[0].tools] == ["alpha__status", "beta__status"]
+    assert alpha.connection.calls == [("status", {})]
+    assert beta.connection.calls == [("status", {})]
+    assert [(item.server, item.tool, item.alias, item.sequence) for item in response.mcp_trace] == [
+        ("alpha", "status", "alpha__status", 1),
+        ("beta", "status", "beta__status", 2),
+    ]
+    assert [item.round for item in response.mcp_trace] == [1, 2]
+    assert [item.status for item in response.mcp_trace] == ["success", "success"]
+    assert response.mcp_tools_used == ["alpha__status", "beta__status"]
+
+
+@pytest.mark.asyncio
+async def test_unknown_selected_server_fails_closed() -> None:
+    service = make_service(ScriptedProvider([turn(content="unused")]), FakeMCPClient())
+    with pytest.raises(MCPUnavailableError, match="Unknown MCP server"):
+        await service.chat(model="mock-fast", prompt="test", mcp_servers=["missing"])
+
+
+@pytest.mark.asyncio
+async def test_long_cross_server_flow_preserves_order_and_namespaced_double_underscore() -> None:
+    calls = [
+        "obsidian__search__notes",
+        "obsidian__read",
+        "taskmanager__overview",
+        "taskmanager__summary",
+        "taskmanager__save",
+        "obsidian__write",
+        "obsidian__read",
+    ]
+    provider = ScriptedProvider(
+        [*(turn(tool_name=name) for name in calls), turn(content="Готово.")]
+    )
+    obsidian = ToolSetMCPClient(["search__notes", "read", "write"])
+    taskmanager = ToolSetMCPClient(["overview", "summary", "save"])
+    service = LLMService(
+        providers={"mock": provider},
+        catalog=MOCK_CATALOG,
+        request_timeout_s=5,
+        mcp_servers={"obsidian": obsidian, "taskmanager": taskmanager},
+        mcp_max_rounds=8,
+    )
+
+    response = await service.chat(
+        model="mock-fast",
+        prompt="Синхронизируй заметки и диагностику",
+        mcp_servers=["obsidian", "taskmanager"],
+    )
+
+    assert response.answer == "Готово."
+    assert [entry.alias for entry in response.mcp_trace] == calls
+    assert [entry.sequence for entry in response.mcp_trace] == list(range(1, 8))
+    assert [entry.round for entry in response.mcp_trace] == list(range(1, 8))
+    assert {entry.status for entry in response.mcp_trace} == {"success"}
+    assert obsidian.connection.calls == [
+        ("search__notes", {}),
+        ("read", {}),
+        ("write", {}),
+        ("read", {}),
+    ]
+    assert taskmanager.connection.calls == [
+        ("overview", {}),
+        ("summary", {}),
+        ("save", {}),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_direct_service_default_allows_ten_round_flow() -> None:
+    provider = ScriptedProvider(
+        [*(turn(tool_name="get_system_overview") for _ in range(9)), turn(content="Готово.")]
+    )
+    mcp = FakeMCPClient()
+    service = LLMService(
+        providers={"mock": provider},
+        catalog=MOCK_CATALOG,
+        request_timeout_s=5,
+        taskmanager_mcp=mcp,
+    )
+
+    response = await service.chat(
+        model="mock-fast", prompt="Проверь систему", use_taskmanager_mcp=True
+    )
+
+    assert response.answer == "Готово."
+    assert len(mcp.connection.calls) == 9

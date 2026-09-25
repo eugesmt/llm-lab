@@ -14,3 +14,4 @@ class ChatRequest(BaseModel):
     prompt: str = Field(min_length=1)
     reasoning_effort: str | None = Field(default=None, examples=["low"])
     use_taskmanager_mcp: bool = False
+    mcp_servers: list[str] | None = None

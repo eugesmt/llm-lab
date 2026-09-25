@@ -162,6 +162,27 @@ function renderArtifacts(artifacts) {
   container.hidden = false;
 }
 
+function renderMCPTrace(trace) {
+  const container = $("chat-mcp-trace");
+  const list = $("chat-mcp-trace-list");
+  if (!container || !list) return;
+  list.replaceChildren();
+  if (!Array.isArray(trace) || trace.length === 0) {
+    container.hidden = true;
+    return;
+  }
+  for (const event of trace) {
+    const item = document.createElement("li");
+    const entry = event && typeof event === "object" ? event : {};
+    const details = [entry.server, entry.tool, entry.alias, entry.status]
+      .filter((value) => value !== null && value !== undefined && value !== "")
+      .map(String);
+    item.textContent = details.length > 0 ? details.join(" · ") : dash;
+    list.appendChild(item);
+  }
+  container.hidden = false;
+}
+
 async function sendChat() {
   const model = selectedModel();
   const prompt = $("chat-prompt").value.trim();
@@ -183,7 +204,12 @@ async function sendChat() {
 
   try {
     const payload = { model: model.id, prompt };
-    payload.use_taskmanager_mcp = $("chat-use-mcp").checked;
+    payload.mcp_servers = [];
+    // Keep cached pages using the former single MCP checkbox functional.
+    const taskmanagerCheckbox = $("chat-use-taskmanager-mcp") || $("chat-use-mcp");
+    const obsidianCheckbox = $("chat-use-obsidian-mcp");
+    if (taskmanagerCheckbox?.checked) payload.mcp_servers.push("taskmanager");
+    if (obsidianCheckbox?.checked) payload.mcp_servers.push("obsidian");
     if ($("chat-effort").value && !$("chat-effort").disabled) {
       payload.reasoning_effort = $("chat-effort").value;
     }
@@ -195,6 +221,7 @@ async function sendChat() {
 
     $("chat-answer").textContent = data.answer;
     renderArtifacts(data.artifacts);
+    renderMCPTrace(data.mcp_trace);
     const usage = data.usage || {};
     setCell("m-provider", data.provider);
     setCell("m-model", data.model);

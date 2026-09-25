@@ -73,8 +73,10 @@ cp .env.example .env
 | `ANTHROPIC_API_KEY` | зарезервировано на будущее |
 | `REQUEST_TIMEOUT_S` | общий timeout запроса, сек (по умолчанию `120`) |
 | `TASKMANAGER_MCP_URL` | Streamable HTTP endpoint (`http://127.0.0.1:8090/mcp`) |
+| `OBSIDIAN_MCP_URL` | Obsidian built-in Streamable HTTP MCP endpoint (for example `http://127.0.0.1:27123/mcp/`) |
+| `OBSIDIAN_MCP_API_KEY` | Bearer key for the Obsidian MCP endpoint (never commit or print it) |
 | `MCP_TIMEOUT_S` | timeout одной MCP-операции, сек (по умолчанию `30`) |
-| `MCP_MAX_ROUNDS` | предел циклов модель → инструмент (по умолчанию `4`) |
+| `MCP_MAX_ROUNDS` | предел циклов модель → инструмент (по умолчанию `10`) |
 | `HOST`, `PORT` | адрес сервера (`127.0.0.1`, `8000`) |
 
 Ключи не хранятся в коде/Git и не логируются (читаются как `SecretStr`).
@@ -94,7 +96,7 @@ uv run llm-lab
 | Endpoint | Описание |
 |---|---|
 | `GET /api/models` | каталог моделей с capabilities (`thinking_supported`, допустимый `reasoning_effort`) |
-| `POST /api/chat` | prompt → одной модели; опционально с Task Manager MCP |
+| `POST /api/chat` | prompt → одной модели; опционально с выбранными именованными MCP-серверами |
 | `POST /api/benchmark` | один prompt → нескольким моделям (+ `repeats` 1–10); ошибки isolate по запускам |
 
 Пример:
@@ -102,7 +104,7 @@ uv run llm-lab
 ```bash
 curl -X POST http://127.0.0.1:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"model": "deepseek-v4-flash", "prompt": "Привет!", "reasoning_effort": "low", "use_taskmanager_mcp": false}'
+  -d '{"model": "deepseek-v4-flash", "prompt": "Привет!", "reasoning_effort": "low", "mcp_servers": []}'
 ```
 
 Ответ:
@@ -115,13 +117,23 @@ curl -X POST http://127.0.0.1:8000/api/chat \
   "usage": {"prompt_tokens": 10, "completion_tokens": 25, "total_tokens": 35, "reasoning_tokens": null},
   "latency_ms": 812.4,
   "finish_reason": "stop",
-  "mcp_tools_used": []
+  "mcp_tools_used": [],
+  "artifacts": [],
+  "mcp_trace": []
 }
 ```
 
+Для нового UI/API используйте `mcp_servers`, например
+`["taskmanager", "obsidian"]`; порядок элементов задаёт порядок подключения.
+Поле `use_taskmanager_mcp` поддерживается как legacy-совместимость для старых
+клиентов, но новые клиенты должны использовать именованные серверы.
+
 ## Task Manager MCP
 
-MCP используется только когда в запросе передано `"use_taskmanager_mcp": true` или включён флажок **Task Manager MCP** в UI. Обычный chat и benchmark не требуют запущенного MCP.
+MCP используется только когда в запросе передан непустой список `mcp_servers`
+(например, `["taskmanager"]`) или включён соответствующий флажок в UI. Старое
+поле `use_taskmanager_mcp: true` поддерживается для legacy-клиентов. Обычный
+chat и benchmark не требуют запущенного MCP.
 
 Запустите три процесса в отдельных терминалах.
 
@@ -168,6 +180,38 @@ curl -X POST http://127.0.0.1:8000/api/chat \
 ```
 
 Если MCP или Task Manager API не запущен, запрос с включённым флагом вернёт контролируемую ошибку `502`; обычный чат продолжит работать.
+
+### Obsidian Local REST API MCP
+
+Новые версии Obsidian Local REST API имеют встроенный Streamable HTTP MCP endpoint
+`/mcp/`; отдельный adapter не нужен. Включите community-плагин Local REST API,
+настройте loopback HTTP или HTTPS (для HTTPS укажите доверенный CA в клиенте) и
+создайте API key в настройках плагина. Не записывайте ключ в repository или
+README: передавайте его только через окружение.
+
+Для opt-in проверки обоих серверов задайте endpoint и ключ, затем запустите:
+
+```bash
+export RUN_REAL_MULTI_MCP_TESTS=1
+export TASKMANAGER_MCP_URL=http://127.0.0.1:8090/mcp
+export OBSIDIAN_MCP_URL=http://127.0.0.1:27123/mcp/
+export OBSIDIAN_MCP_API_KEY='<local-key>'
+uv run pytest -o addopts='' tests/test_mcp_integration.py -m integration
+```
+
+Проверка устанавливает Bearer-authenticated соединение, получает advertised
+tools обоих серверов и не изменяет vault. Write/read/delete E2E для Obsidian
+намеренно не включён без подтверждённой published schema инструментов. Если
+нужен ручной E2E, используйте уникальный путь
+`LLM Lab Tests/diagnostic-<uuid>.md`, проверьте read-back marker и удаляйте
+только note, которой владеет текущий запуск; неизвестные notes не удаляйте.
+
+Для ручного прогона в UI включите оба MCP checkbox и отправьте длинный prompt,
+например: «Собери текущую сводку CPU и памяти, затем создай в тестовой папке
+Obsidian заметку с уникальным UUID marker и верни краткий результат». Ожидаемый
+ответ содержит ordered MCP trace с server/tool/status в порядке вызовов. Такой
+prompt выполняйте только после проверки доступных write/delete tools и правил
+cleanup vault.
 
 Модели и их цены: `app/catalog.py` и `app/pricing.py` (цены официальные, на 2026-09; если цены нет — cost будет `null`, значения не выдумываются).
 

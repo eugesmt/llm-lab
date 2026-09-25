@@ -23,4 +23,5 @@ async def chat(
         prompt=request.prompt,
         reasoning_effort=request.reasoning_effort,
         use_taskmanager_mcp=request.use_taskmanager_mcp,
+        mcp_servers=request.mcp_servers,
     )

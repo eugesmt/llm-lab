@@ -128,6 +128,10 @@ button.primary:disabled { opacity: 0.5; cursor: wait; }
 .artifacts { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
 .artifacts a { color: var(--accent); }
 
+.mcp-trace { margin-top: 4px; }
+.mcp-trace ol { margin: 8px 0 0; padding-left: 28px; }
+.mcp-trace li { padding: 3px 0; overflow-wrap: anywhere; }
+
 h2 { font-size: 15px; margin: 4px 0 0; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
 table { border-collapse: collapse; width: 100%; font-size: 14px; }

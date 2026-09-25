@@ -21,7 +21,7 @@ from app.api import chat as chat_api
 from app.api import models as models_api
 from app.config import Settings
 from app.errors import AppError
-from app.mcp.client import MCPClient, TaskManagerMCPClient
+from app.mcp.client import MCPClient, StreamableHTTPMCPClient, TaskManagerMCPClient
 from app.providers.base import LLMProvider
 from app.providers.deepseek import DeepSeekProvider
 from app.providers.openai import OpenAIProvider
@@ -58,6 +58,7 @@ def create_app(
     catalog: Sequence[ModelInfo] | None = None,
     providers: Mapping[str, LLMProvider] | None = None,
     taskmanager_mcp: MCPClient | None = None,
+    mcp_servers: Mapping[str, MCPClient] | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     catalog = catalog if catalog is not None else catalog_module.MODEL_CATALOG
@@ -84,10 +85,28 @@ def create_app(
             ),
         }
 
+    configured_servers = dict(mcp_servers or {})
+    if taskmanager_mcp is None:
+        taskmanager_mcp = configured_servers.get("taskmanager")
     if taskmanager_mcp is None:
         taskmanager_mcp = TaskManagerMCPClient(
             url=settings.taskmanager_mcp_url,
             timeout_s=settings.mcp_timeout_s,
+        )
+    configured_servers["taskmanager"] = taskmanager_mcp
+
+    if (
+        "obsidian" not in configured_servers
+        and settings.obsidian_mcp_url is not None
+        and settings.obsidian_mcp_api_key is not None
+    ):
+        configured_servers["obsidian"] = StreamableHTTPMCPClient(
+            url=settings.obsidian_mcp_url,
+            timeout_s=settings.mcp_timeout_s,
+            headers={
+                "Authorization": f"Bearer {settings.obsidian_mcp_api_key.get_secret_value()}"
+            },
+            server_name="Obsidian",
         )
 
     llm_service = LLMService(
@@ -95,12 +114,14 @@ def create_app(
         catalog=catalog,
         request_timeout_s=settings.request_timeout_s,
         taskmanager_mcp=taskmanager_mcp,
+        mcp_servers=configured_servers,
         mcp_max_rounds=settings.mcp_max_rounds,
     )
 
     app = FastAPI(title="LLM Lab", version="0.1.0")
     app.state.llm_service = llm_service
     app.state.benchmark_service = BenchmarkService(llm_service)
+    app.state.mcp_servers = configured_servers
 
     _register_error_handlers(app)
     app.include_router(models_api.router)

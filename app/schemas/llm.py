@@ -72,6 +72,15 @@ class ArtifactLink(BaseModel):
     report_id: str | None = None
 
 
+class MCPTraceEntry(BaseModel):
+    sequence: int
+    round: int
+    server: str
+    tool: str
+    alias: str
+    status: Literal["success"] = "success"
+
+
 class LLMResponse(BaseModel):
     provider: str
     model: str
@@ -81,3 +90,4 @@ class LLMResponse(BaseModel):
     finish_reason: str | None = None
     mcp_tools_used: list[str] = Field(default_factory=list)
     artifacts: list[ArtifactLink] = Field(default_factory=list)
+    mcp_trace: list[MCPTraceEntry] = Field(default_factory=list)
