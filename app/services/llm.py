@@ -7,9 +7,11 @@ never on a concrete SDK (see app/providers/base.py).
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Mapping, Sequence
 from time import perf_counter
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from app.errors import (
     EmptyResponseError,
@@ -24,6 +26,7 @@ from app.errors import (
 )
 from app.providers.base import ToolCallingProvider
 from app.schemas.llm import (
+    ArtifactLink,
     LLMMessage,
     LLMRequest,
     LLMResponse,
@@ -130,6 +133,7 @@ class LLMService:
         started = perf_counter()
         usage_parts: list[Usage] = []
         tools_used: list[str] = []
+        artifacts: list[ArtifactLink] = []
         messages = [
             LLMMessage(
                 role="system",
@@ -170,6 +174,7 @@ class LLMService:
                         latency_ms=(perf_counter() - started) * 1000,
                         finish_reason=turn.finish_reason,
                         mcp_tools_used=tools_used,
+                        artifacts=artifacts,
                     )
 
                 if round_index == self._mcp_max_rounds - 1:
@@ -188,9 +193,37 @@ class LLMService:
                         raise MCPToolError(f"Model requested unknown MCP tool '{call.name}'")
                     result = await connection.call_tool(call.name, call.arguments)
                     tools_used.append(call.name)
+                    artifact = self._artifact_from_tool_result(result)
+                    if artifact is not None and artifact not in artifacts:
+                        artifacts.append(artifact)
                     messages.append(LLMMessage(role="tool", content=result, tool_call_id=call.id))
 
         raise MCPAgentLoopError(f"Model did not finish after {self._mcp_max_rounds} MCP rounds")
+
+    @staticmethod
+    def _artifact_from_tool_result(result: str) -> ArtifactLink | None:
+        try:
+            payload = json.loads(result)
+        except (TypeError, json.JSONDecodeError):
+            return None
+        if not isinstance(payload, dict):
+            return None
+        download_url = payload.get("download_url")
+        if not isinstance(download_url, str):
+            return None
+        parsed = urlparse(download_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            return None
+
+        def optional_string(name: str) -> str | None:
+            value = payload.get(name)
+            return value if isinstance(value, str) and value else None
+
+        return ArtifactLink(
+            download_url=download_url,
+            filename=optional_string("filename") or optional_string("path"),
+            report_id=optional_string("report_id"),
+        )
 
     @staticmethod
     def _sum_usage(parts: list[Usage]) -> Usage | None:

@@ -66,6 +66,12 @@ class ToolCompletionResponse(BaseModel):
     finish_reason: str | None = None
 
 
+class ArtifactLink(BaseModel):
+    download_url: str
+    filename: str | None = None
+    report_id: str | None = None
+
+
 class LLMResponse(BaseModel):
     provider: str
     model: str
@@ -74,3 +80,4 @@ class LLMResponse(BaseModel):
     latency_ms: float
     finish_reason: str | None = None
     mcp_tools_used: list[str] = Field(default_factory=list)
+    artifacts: list[ArtifactLink] = Field(default_factory=list)

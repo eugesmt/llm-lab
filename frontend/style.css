@@ -125,6 +125,9 @@ button.primary:disabled { opacity: 0.5; cursor: wait; }
   font-family: inherit;
 }
 
+.artifacts { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.artifacts a { color: var(--accent); }
+
 h2 { font-size: 15px; margin: 4px 0 0; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
 table { border-collapse: collapse; width: 100%; font-size: 14px; }

@@ -135,6 +135,33 @@ function setCell(id, value) {
   $(id).textContent = value === null || value === undefined || value === "" ? dash : String(value);
 }
 
+function renderArtifacts(artifacts) {
+  const container = $("chat-artifacts");
+  container.replaceChildren();
+  const validArtifacts = (artifacts || []).filter((artifact) => {
+    try {
+      const url = new URL(artifact.download_url);
+      return url.protocol === "http:" || url.protocol === "https:";
+    } catch { return false; }
+  });
+  if (validArtifacts.length === 0) {
+    container.hidden = true;
+    return;
+  }
+  const title = document.createElement("strong");
+  title.textContent = "Файлы:";
+  container.appendChild(title);
+  for (const artifact of validArtifacts) {
+    const link = document.createElement("a");
+    link.href = artifact.download_url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = artifact.filename || artifact.report_id || artifact.download_url;
+    container.appendChild(link);
+  }
+  container.hidden = false;
+}
+
 async function sendChat() {
   const model = selectedModel();
   const prompt = $("chat-prompt").value.trim();
@@ -167,6 +194,7 @@ async function sendChat() {
     });
 
     $("chat-answer").textContent = data.answer;
+    renderArtifacts(data.artifacts);
     const usage = data.usage || {};
     setCell("m-provider", data.provider);
     setCell("m-model", data.model);

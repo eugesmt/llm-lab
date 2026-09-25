@@ -23,8 +23,9 @@ from tests.conftest import MOCK_CATALOG
 
 
 class FakeMCPConnection:
-    def __init__(self) -> None:
+    def __init__(self, tool_result: str | None = None) -> None:
         self.calls: list[tuple[str, dict[str, object]]] = []
+        self.tool_result = tool_result or '{"cpu_percent": 17.5, "memory_percent": 42.0}'
 
     async def list_tools(self) -> list[ToolDefinition]:
         return [
@@ -37,12 +38,12 @@ class FakeMCPConnection:
 
     async def call_tool(self, name: str, arguments: dict[str, object]) -> str:
         self.calls.append((name, arguments))
-        return '{"cpu_percent": 17.5, "memory_percent": 42.0}'
+        return self.tool_result
 
 
 class FakeMCPClient:
-    def __init__(self) -> None:
-        self.connection = FakeMCPConnection()
+    def __init__(self, tool_result: str | None = None) -> None:
+        self.connection = FakeMCPConnection(tool_result)
 
     @asynccontextmanager
     async def connect(self):  # type: ignore[no-untyped-def]
@@ -120,6 +121,39 @@ async def test_agent_calls_mcp_and_returns_model_answer() -> None:
     assert second_messages[-1].role == "tool"
     assert "17.5" in (second_messages[-1].content or "")
     assert {tool.name for tool in provider.requests[0].tools} == {"get_system_overview"}
+
+
+@pytest.mark.asyncio
+async def test_agent_preserves_downloadable_mcp_report() -> None:
+    provider = ScriptedProvider(
+        [turn(tool_name="get_system_overview", finish_reason="tool_calls"), turn(content="Готово.")]
+    )
+    mcp = FakeMCPClient(
+        '{"report_id":"r-1","path":"diagnostic-r-1.md",'
+        '"download_url":"http://127.0.0.1:8090/reports/diagnostic-r-1.md"}'
+    )
+
+    response = await make_service(provider, mcp).chat(
+        model="mock-fast", prompt="Сохрани отчёт", use_taskmanager_mcp=True
+    )
+
+    assert response.artifacts[0].download_url == (
+        "http://127.0.0.1:8090/reports/diagnostic-r-1.md"
+    )
+    assert response.artifacts[0].filename == "diagnostic-r-1.md"
+    assert response.artifacts[0].report_id == "r-1"
+
+
+@pytest.mark.asyncio
+async def test_agent_ignores_non_http_download_url() -> None:
+    provider = ScriptedProvider([turn(tool_name="get_system_overview"), turn(content="Готово.")])
+    mcp = FakeMCPClient('{"download_url":"javascript:alert(1)","path":"bad.md"}')
+
+    response = await make_service(provider, mcp).chat(
+        model="mock-fast", prompt="Сохрани отчёт", use_taskmanager_mcp=True
+    )
+
+    assert response.artifacts == []
 
 
 @pytest.mark.asyncio
