@@ -24,11 +24,13 @@ from app.errors import AppError
 from app.mcp.client import MCPClient, StreamableHTTPMCPClient, TaskManagerMCPClient
 from app.providers.base import LLMProvider
 from app.providers.deepseek import DeepSeekProvider
+from app.providers.ollama import OllamaProvider
 from app.providers.openai import OpenAIProvider
 from app.providers.openrouter import OpenRouterProvider
 from app.schemas.model import ModelInfo
 from app.services.benchmark import BenchmarkService
 from app.services.llm import LLMService
+from app.services.rag import RAGService
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
@@ -83,6 +85,10 @@ def create_app(
                 else None,
                 timeout_s=settings.request_timeout_s,
             ),
+            "ollama": OllamaProvider(
+                base_url=settings.ollama_base_url,
+                timeout_s=settings.request_timeout_s,
+            ),
         }
 
     configured_servers = dict(mcp_servers or {})
@@ -109,6 +115,13 @@ def create_app(
             server_name="Obsidian",
         )
 
+    rag_service = RAGService(
+        index_dir=settings.rag_index_dir,
+        ollama_base_url=settings.ollama_base_url,
+        embedding_model=settings.ollama_embedding_model,
+        top_k=settings.rag_top_k,
+    )
+
     llm_service = LLMService(
         providers=providers,
         catalog=catalog,
@@ -116,6 +129,7 @@ def create_app(
         taskmanager_mcp=taskmanager_mcp,
         mcp_servers=configured_servers,
         mcp_max_rounds=settings.mcp_max_rounds,
+        rag_service=rag_service,
     )
 
     app = FastAPI(title="LLM Lab", version="0.1.0")

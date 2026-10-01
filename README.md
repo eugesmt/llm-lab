@@ -96,7 +96,7 @@ uv run llm-lab
 | Endpoint | Описание |
 |---|---|
 | `GET /api/models` | каталог моделей с capabilities (`thinking_supported`, допустимый `reasoning_effort`) |
-| `POST /api/chat` | prompt → одной модели; опционально с выбранными именованными MCP-серверами |
+| `POST /api/chat` | prompt → одной модели; режим `rag_mode=off/on`; опционально MCP |
 | `POST /api/benchmark` | один prompt → нескольким моделям (+ `repeats` 1–10); ошибки isolate по запускам |
 
 Пример:
@@ -106,6 +106,38 @@ curl -X POST http://127.0.0.1:8000/api/chat \
   -H "Content-Type: application/json" \
   -d '{"model": "deepseek-v4-flash", "prompt": "Привет!", "reasoning_effort": "low", "mcp_servers": []}'
 ```
+
+Локальный RAG использует Ollama, FAISS и SQLite из проекта `rag`. Для запроса
+с контекстом документации передайте `rag_mode: "on"` и локальную модель:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"model":"qwen3:4b","prompt":"Как настроить входящий SIP-звонок?","rag_mode":"on"}'
+```
+
+Режимы сравнения:
+
+- `rag_mode: "off"` — вопрос передаётся модели без найденного контекста;
+- `rag_mode: "on"` — вопрос превращается в embedding, FAISS возвращает top-k
+  chunks, SQLite возвращает текст и metadata, после чего контекст добавляется
+  к prompt модели.
+
+Ответ в RAG-режиме дополнительно содержит `rag_sources` с `chunk_id`, source,
+section и similarity.
+
+## Сравнение двух режимов
+
+Запустите backend, затем выполните:
+
+```bash
+uv run python evaluation/run_rag_comparison.py
+```
+
+Скрипт отправляет 10 вопросов в режимах `rag_mode=off` и `rag_mode=on`,
+сохраняет ответы в `evaluation/rag_comparison.json` и считает, сколько
+ожидаемых фактов найдено в каждом режиме. Файл с вопросами и ожидаемыми
+источниками находится в `evaluation/rag_questions.json`.
 
 Ответ:
 
@@ -275,8 +307,9 @@ llm-lab/
 │   ├── errors.py              # application-level ошибки (→ HTTP-коды)
 │   ├── api/                   # тонкие роутеры: chat, models, benchmark
 │   ├── schemas/               # внутренние и API-модели (Pydantic)
-│   ├── services/              # llm.py (валидация, timeout), benchmark.py
-│   └── providers/             # base.py (Protocol), deepseek.py, openai.py, mock.py
+│   ├── services/              # llm.py, rag.py, benchmark.py
+│   └── providers/             # Ollama и внешние provider adapters
 ├── frontend/                  # vanilla JS UI (index.html, app.js, style.css)
+├── evaluation/rag_questions.json # 10 контрольных RAG-вопросов
 └── tests/                     # pytest: unit + integration (env-gated)
 ```

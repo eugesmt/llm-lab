@@ -1,5 +1,7 @@
 """API schemas for the chat endpoint."""
 
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from app.schemas.llm import LLMResponse
@@ -15,3 +17,4 @@ class ChatRequest(BaseModel):
     reasoning_effort: str | None = Field(default=None, examples=["low"])
     use_taskmanager_mcp: bool = False
     mcp_servers: list[str] | None = None
+    rag_mode: Literal["off", "on"] = "off"

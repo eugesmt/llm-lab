@@ -183,6 +183,24 @@ function renderMCPTrace(trace) {
   container.hidden = false;
 }
 
+function renderRAGSources(mode, sources) {
+  const container = $("chat-rag-sources");
+  const list = $("chat-rag-source-list");
+  if (!container || !list) return;
+  list.replaceChildren();
+  if (mode !== "on" || !Array.isArray(sources) || sources.length === 0) {
+    container.hidden = true;
+    return;
+  }
+  for (const source of sources) {
+    const item = document.createElement("li");
+    const section = source.section ? ` · ${source.section}` : "";
+    item.textContent = `${source.source}${section} · ${source.chunk_id} · similarity ${Number(source.similarity).toFixed(4)}`;
+    list.appendChild(item);
+  }
+  container.hidden = false;
+}
+
 async function sendChat() {
   const model = selectedModel();
   const prompt = $("chat-prompt").value.trim();
@@ -204,6 +222,7 @@ async function sendChat() {
 
   try {
     const payload = { model: model.id, prompt };
+    payload.rag_mode = $("chat-use-rag")?.checked ? "on" : "off";
     payload.mcp_servers = [];
     // Keep cached pages using the former single MCP checkbox functional.
     const taskmanagerCheckbox = $("chat-use-taskmanager-mcp") || $("chat-use-mcp");
@@ -220,6 +239,7 @@ async function sendChat() {
     });
 
     $("chat-answer").textContent = data.answer;
+    renderRAGSources(data.rag_mode, data.rag_sources);
     renderArtifacts(data.artifacts);
     renderMCPTrace(data.mcp_trace);
     const usage = data.usage || {};

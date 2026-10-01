@@ -12,5 +12,8 @@ __pycache__/
 .ruff_cache/
 .mypy_cache/
 
+# Generated RAG comparison output
+evaluation/rag_comparison.json
+
 # Agent workspace
 .zcode/

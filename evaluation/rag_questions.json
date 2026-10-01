@@ -1,0 +1,62 @@
+[
+  {
+    "id": "sip_inbound",
+    "question": "Как настроить входящий SIP-звонок?",
+    "expected": ["создать SIP Trunk", "создать SIP Dispatch Rule", "направить вызов в LiveKit room"],
+    "sources": ["server-oss/sip/README.md"]
+  },
+  {
+    "id": "sip_docker",
+    "question": "Как запустить SIP service в Docker?",
+    "expected": ["Redis", "подключение к LiveKit Server", "docker"],
+    "sources": ["server-oss/sip/README.md"]
+  },
+  {
+    "id": "sip_build",
+    "question": "Какие зависимости нужны для сборки SIP service?",
+    "expected": ["Go", "libopus", "pkg-config"],
+    "sources": ["server-oss/sip/README.md"]
+  },
+  {
+    "id": "egress_recording",
+    "question": "Как записать аудио и видео из LiveKit-комнаты?",
+    "expected": ["Egress", "room", "output format"],
+    "sources": ["server-oss/egress/README.md"]
+  },
+  {
+    "id": "agent_session",
+    "question": "Что делает AgentSession?",
+    "expected": ["lifecycle", "voice agent", "room"],
+    "sources": ["agents/livekit-agents/README.md"]
+  },
+  {
+    "id": "room_connection",
+    "question": "Как клиент подключается к LiveKit-комнате?",
+    "expected": ["WebSocket", "token", "room"],
+    "sources": ["client-sdks/client-sdk-js/README.md"]
+  },
+  {
+    "id": "redis_role",
+    "question": "Зачем LiveKit Server нужен Redis?",
+    "expected": ["Redis", "состояние", "сервер"],
+    "sources": ["server-oss/livekit/README.md"]
+  },
+  {
+    "id": "webhooks",
+    "question": "Как настроить Webhook в LiveKit?",
+    "expected": ["Webhook", "событие", "URL"],
+    "sources": ["server-oss/livekit/README.md"]
+  },
+  {
+    "id": "room_tokens",
+    "question": "Как создать токен для подключения к комнате?",
+    "expected": ["access token", "room", "identity"],
+    "sources": ["server-oss/livekit/README.md"]
+  },
+  {
+    "id": "agents_tools",
+    "question": "Как голосовой агент использует инструменты?",
+    "expected": ["agent", "tool", "function"],
+    "sources": ["agents/livekit-agents/README.md"]
+  }
+]

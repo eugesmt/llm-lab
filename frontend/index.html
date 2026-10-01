@@ -29,6 +29,10 @@
           Reasoning effort
           <select id="chat-effort"></select>
         </label>
+        <label class="checkbox-option" title="Искать контекст в локальной документации перед ответом">
+          <input id="chat-use-rag" type="checkbox">
+          RAG
+        </label>
         <label class="checkbox-option" title="Разрешить модели получать текущие данные ОС через Task Manager MCP">
           <input id="chat-use-taskmanager-mcp" type="checkbox">
           Task Manager MCP
@@ -50,6 +54,10 @@
       <div id="chat-result" hidden>
         <h2>Ответ</h2>
         <pre id="chat-answer" class="answer"></pre>
+        <div id="chat-rag-sources" class="artifacts" hidden>
+          <strong>Источники RAG:</strong>
+          <ul id="chat-rag-source-list"></ul>
+        </div>
         <div id="chat-artifacts" class="artifacts" hidden></div>
         <div id="chat-mcp-trace" class="mcp-trace" hidden>
           <h2>MCP trace</h2>

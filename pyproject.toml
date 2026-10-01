@@ -4,8 +4,10 @@ version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.141.1",
+    "faiss-cpu>=1.8,<2",
     "httpx>=0.28.1",
     "mcp>=1.29.0,<2",
+    "numpy>=1.26,<3",
     "openai>=3.8.0",
     "pydantic>=2.13.5",
     "pydantic-settings>=2.15.0",

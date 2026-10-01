@@ -14,6 +14,13 @@ from app.schemas.model import ModelInfo
 
 MODEL_CATALOG: list[ModelInfo] = [
     ModelInfo(
+        id="qwen3:4b",
+        provider="ollama",
+        display_name="Qwen3 4B (local Ollama)",
+        thinking_supported=False,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
         id="deepseek-v4-flash",
         provider="deepseek",
         display_name="DeepSeek V4 Flash",
@@ -48,6 +55,13 @@ MODEL_CATALOG: list[ModelInfo] = [
         provider="openrouter",
         display_name="Gemma 4 31B (free)",
         thinking_supported=False,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
+        id="google/gemma-4-26b-a4b-it:free",
+        provider="openrouter",
+        display_name="Gemma 4 26B A4B IT (free)",
+        thinking_supported=True,
         reasoning_effort=[],
     ),
     ModelInfo(
