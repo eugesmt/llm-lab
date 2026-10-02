@@ -1,4 +1,4 @@
-"""Сравнивает ответы LLM без RAG и с RAG на 10 контрольных вопросах."""
+"""Сравнивает ответы без RAG, обычного RAG и улучшенного RAG."""
 
 import json
 from pathlib import Path
@@ -36,7 +36,8 @@ results = []
 for item in questions:
     print(f"Обработка: {item['id']}")
     without_rag = ask(item["question"], "off")
-    with_rag = ask(item["question"], "on")
+    baseline = ask(item["question"], "on")
+    enhanced = ask(item["question"], "enhanced")
 
     results.append(
         {
@@ -49,10 +50,15 @@ for item in questions:
                 "facts_found": facts_found(without_rag["answer"], item["expected"]),
                 "sources": without_rag.get("rag_sources", []),
             },
-            "with_rag": {
-                "answer": with_rag["answer"],
-                "facts_found": facts_found(with_rag["answer"], item["expected"]),
-                "sources": with_rag.get("rag_sources", []),
+            "baseline_rag": {
+                "answer": baseline["answer"],
+                "facts_found": facts_found(baseline["answer"], item["expected"]),
+                "sources": baseline.get("rag_sources", []),
+            },
+            "enhanced_rag": {
+                "answer": enhanced["answer"],
+                "facts_found": facts_found(enhanced["answer"], item["expected"]),
+                "sources": enhanced.get("rag_sources", []),
             },
         }
     )
@@ -64,8 +70,10 @@ RESULTS_PATH.write_text(
 
 total_expected = sum(len(item["expected"]) for item in results)
 without_total = sum(item["without_rag"]["facts_found"] for item in results)
-with_total = sum(item["with_rag"]["facts_found"] for item in results)
+baseline_total = sum(item["baseline_rag"]["facts_found"] for item in results)
+enhanced_total = sum(item["enhanced_rag"]["facts_found"] for item in results)
 
 print(f"Факты без RAG: {without_total}/{total_expected}")
-print(f"Факты с RAG: {with_total}/{total_expected}")
+print(f"Факты обычного RAG: {baseline_total}/{total_expected}")
+print(f"Факты улучшенного RAG: {enhanced_total}/{total_expected}")
 print(f"Сохранено: {RESULTS_PATH}")

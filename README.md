@@ -96,7 +96,7 @@ uv run llm-lab
 | Endpoint | Описание |
 |---|---|
 | `GET /api/models` | каталог моделей с capabilities (`thinking_supported`, допустимый `reasoning_effort`) |
-| `POST /api/chat` | prompt → одной модели; режим `rag_mode=off/on`; опционально MCP |
+| `POST /api/chat` | prompt → одной модели; режим `rag_mode=off/on/enhanced`; опционально MCP |
 | `POST /api/benchmark` | один prompt → нескольким моделям (+ `repeats` 1–10); ошибки isolate по запускам |
 
 Пример:
@@ -108,7 +108,7 @@ curl -X POST http://127.0.0.1:8000/api/chat \
 ```
 
 Локальный RAG использует Ollama, FAISS и SQLite из проекта `rag`. Для запроса
-с контекстом документации передайте `rag_mode: "on"` и локальную модель:
+с контекстом документации передайте `rag_mode: "on"` или `rag_mode: "enhanced"`:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/chat \
@@ -119,12 +119,12 @@ curl -X POST http://127.0.0.1:8000/api/chat \
 Режимы сравнения:
 
 - `rag_mode: "off"` — вопрос передаётся модели без найденного контекста;
-- `rag_mode: "on"` — вопрос превращается в embedding, FAISS возвращает top-k
-  chunks, SQLite возвращает текст и metadata, после чего контекст добавляется
-  к prompt модели.
+- `rag_mode: "on"` — обычный RAG: embedding → FAISS top-k → контекст модели;
+- `rag_mode: "enhanced"` — query rewrite → FAISS top-8 → фильтр по similarity
+  → heuristic reranking → лучшие top-3 chunks → контекст модели.
 
 Ответ в RAG-режиме дополнительно содержит `rag_sources` с `chunk_id`, source,
-section и similarity.
+section, similarity и, для enhanced-режима, rerank_score.
 
 ## Сравнение двух режимов
 
@@ -134,9 +134,9 @@ section и similarity.
 uv run python evaluation/run_rag_comparison.py
 ```
 
-Скрипт отправляет 10 вопросов в режимах `rag_mode=off` и `rag_mode=on`,
-сохраняет ответы в `evaluation/rag_comparison.json` и считает, сколько
-ожидаемых фактов найдено в каждом режиме. Файл с вопросами и ожидаемыми
+Скрипт отправляет 10 вопросов в режимах `rag_mode=off`, `rag_mode=on` и
+`rag_mode=enhanced`, сохраняет ответы в `evaluation/rag_comparison.json` и
+считает ожидаемые факты для каждого режима. Файл с вопросами и ожидаемыми
 источниками находится в `evaluation/rag_questions.json`.
 
 Ответ:

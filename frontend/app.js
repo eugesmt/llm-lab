@@ -188,14 +188,17 @@ function renderRAGSources(mode, sources) {
   const list = $("chat-rag-source-list");
   if (!container || !list) return;
   list.replaceChildren();
-  if (mode !== "on" || !Array.isArray(sources) || sources.length === 0) {
+  if (mode === "off" || !Array.isArray(sources) || sources.length === 0) {
     container.hidden = true;
     return;
   }
   for (const source of sources) {
     const item = document.createElement("li");
     const section = source.section ? ` · ${source.section}` : "";
-    item.textContent = `${source.source}${section} · ${source.chunk_id} · similarity ${Number(source.similarity).toFixed(4)}`;
+    const rerank = source.rerank_score === null || source.rerank_score === undefined
+      ? ""
+      : ` · итоговый score ${Number(source.rerank_score).toFixed(4)}`;
+    item.textContent = `${source.source}${section} · ${source.chunk_id} · similarity ${Number(source.similarity).toFixed(4)}${rerank}`;
     list.appendChild(item);
   }
   container.hidden = false;
@@ -222,7 +225,7 @@ async function sendChat() {
 
   try {
     const payload = { model: model.id, prompt };
-    payload.rag_mode = $("chat-use-rag")?.checked ? "on" : "off";
+    payload.rag_mode = $("chat-rag-mode")?.value || "off";
     payload.mcp_servers = [];
     // Keep cached pages using the former single MCP checkbox functional.
     const taskmanagerCheckbox = $("chat-use-taskmanager-mcp") || $("chat-use-mcp");

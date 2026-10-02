@@ -101,10 +101,10 @@ class LLMService:
 
         rag_sources = []
         effective_prompt = prompt
-        if rag_mode == "on":
+        if rag_mode in {"on", "enhanced"}:
             if self._rag_service is None:
                 raise ProviderRequestError("RAG service is not configured")
-            retrieved = await self._rag_service.retrieve(prompt)
+            retrieved = await self._rag_service.retrieve(prompt, enhanced=rag_mode == "enhanced")
             rag_sources = [chunk.source for chunk in retrieved]
             effective_prompt = self._build_rag_prompt(prompt, retrieved)
 

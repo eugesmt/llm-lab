@@ -27,7 +27,9 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://127.0.0.1:11434"
     ollama_embedding_model: str = "qwen3-embedding:0.6b"
     rag_index_dir: str = "/home/lab-dev/Projects/rag/rag_lab/indexes/structural"
+    rag_initial_top_k: int = Field(default=8, ge=3, le=50)
     rag_top_k: int = Field(default=3, ge=1, le=20)
+    rag_similarity_threshold: float = Field(default=0.55, ge=-1.0, le=1.0)
 
     taskmanager_mcp_url: str = "http://127.0.0.1:8090/mcp"
     mcp_timeout_s: float = 30.0

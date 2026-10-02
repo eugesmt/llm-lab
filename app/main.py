@@ -120,6 +120,8 @@ def create_app(
         ollama_base_url=settings.ollama_base_url,
         embedding_model=settings.ollama_embedding_model,
         top_k=settings.rag_top_k,
+        initial_top_k=settings.rag_initial_top_k,
+        similarity_threshold=settings.rag_similarity_threshold,
     )
 
     llm_service = LLMService(

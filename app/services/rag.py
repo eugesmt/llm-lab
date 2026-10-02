@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -26,23 +27,29 @@ class RAGService:
         ollama_base_url: str,
         embedding_model: str,
         top_k: int,
+        initial_top_k: int,
+        similarity_threshold: float,
     ) -> None:
         self._index_path = Path(index_dir) / "index.faiss"
         self._database_path = Path(index_dir) / "chunks.sqlite"
         self._embedding_url = f"{ollama_base_url.rstrip('/')}/api/embed"
         self._embedding_model = embedding_model
         self._top_k = top_k
+        self._initial_top_k = initial_top_k
+        self._similarity_threshold = similarity_threshold
         self._index: object | None = None
 
-    async def retrieve(self, question: str) -> list[RetrievedChunk]:
+    async def retrieve(self, question: str, enhanced: bool = False) -> list[RetrievedChunk]:
         index = self._load_index()
-        question_vector = await self._embed(question)
+        search_question = self.rewrite_query(question) if enhanced else question
+        question_vector = await self._embed(search_question)
         import faiss
         import numpy as np
 
         vector = np.asarray([question_vector], dtype="float32")
         faiss.normalize_L2(vector)
-        similarities, vector_ids = index.search(vector, self._top_k)
+        search_k = self._initial_top_k if enhanced else self._top_k
+        similarities, vector_ids = index.search(vector, search_k)
 
         results: list[RetrievedChunk] = []
         with sqlite3.connect(self._database_path) as connection:
@@ -63,19 +70,84 @@ class RAGService:
                         f"RAG metadata is missing for vector_id={int(vector_id)}"
                     )
 
-                results.append(
-                    RetrievedChunk(
-                        source=RAGSource(
-                            chunk_id=row[0],
-                            source=row[1],
-                            section=row[2],
-                            similarity=float(similarity),
-                        ),
-                        text=row[3],
-                    )
-                )
+                results.append(self._make_chunk(row, float(similarity)))
 
-        return results
+        if not enhanced:
+            return results
+
+        filtered = [
+            chunk
+            for chunk in results
+            if chunk.source.similarity >= self._similarity_threshold
+        ]
+        if not filtered and results:
+            filtered = results[:1]
+
+        query_terms = self._terms(search_question)
+        reranked = sorted(
+            filtered,
+            key=lambda chunk: self._rerank_score(chunk, query_terms),
+            reverse=True,
+        )
+        return [
+            RetrievedChunk(
+                source=chunk.source.model_copy(
+                    update={"rerank_score": self._rerank_score(chunk, query_terms)}
+                ),
+                text=chunk.text,
+            )
+            for chunk in reranked[: self._top_k]
+        ]
+
+    @staticmethod
+    def rewrite_query(question: str) -> str:
+        """Добавляет к вопросу технические термины для более точного поиска."""
+        lower_question = question.lower()
+        expansions: list[str] = []
+        mappings = {
+            "входящ": "inbound SIP trunk SIP dispatch rule CreateSIPTrunk CreateSIPDispatchRule",
+            "docker": "Docker host.docker.internal 172.17.0.1 Redis",
+            "зависим": "Go libopus pkg-config opusfile libsoxr",
+            "запис": "Egress room audio video output format",
+            "агент": "AgentSession voice agent lifecycle room tools",
+            "комнат": "LiveKit room WebSocket token identity",
+            "redis": "Redis session state LiveKit server",
+            "webhook": "Webhook event URL secret",
+            "токен": "access token room identity grant",
+        }
+        for marker, terms in mappings.items():
+            if marker in lower_question:
+                expansions.append(terms)
+        return f"{question} {' '.join(expansions)}".strip()
+
+    @staticmethod
+    def _terms(text: str) -> set[str]:
+        stopwords = {
+            "как", "что", "для", "нужен", "нужно", "какие", "какой", "из", "в", "и",
+            "the", "how", "what", "for", "from", "with", "are", "is", "to",
+        }
+        return {
+            term
+            for term in re.findall(r"[a-zа-яё0-9_]+", text.lower())
+            if len(term) > 2 and term not in stopwords
+        }
+
+    def _rerank_score(self, chunk: RetrievedChunk, query_terms: set[str]) -> float:
+        chunk_terms = self._terms(f"{chunk.source.section or ''} {chunk.text}")
+        overlap = len(query_terms & chunk_terms) / max(len(query_terms), 1)
+        return 0.75 * chunk.source.similarity + 0.25 * overlap
+
+    @staticmethod
+    def _make_chunk(row: tuple[object, ...], similarity: float) -> RetrievedChunk:
+        return RetrievedChunk(
+            source=RAGSource(
+                chunk_id=str(row[0]),
+                source=str(row[1]),
+                section=str(row[2]) if row[2] is not None else None,
+                similarity=similarity,
+            ),
+            text=str(row[3]),
+        )
 
     def _load_index(self) -> object:
         if self._index is None:

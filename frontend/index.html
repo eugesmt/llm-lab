@@ -29,9 +29,13 @@
           Reasoning effort
           <select id="chat-effort"></select>
         </label>
-        <label class="checkbox-option" title="Искать контекст в локальной документации перед ответом">
-          <input id="chat-use-rag" type="checkbox">
-          RAG
+        <label title="Выберите способ использования локальной документации">
+          Режим RAG
+          <select id="chat-rag-mode">
+            <option value="off">Без RAG</option>
+            <option value="on">Обычный RAG</option>
+            <option value="enhanced">Улучшенный RAG</option>
+          </select>
         </label>
         <label class="checkbox-option" title="Разрешить модели получать текущие данные ОС через Task Manager MCP">
           <input id="chat-use-taskmanager-mcp" type="checkbox">

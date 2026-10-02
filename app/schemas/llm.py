@@ -77,6 +77,7 @@ class RAGSource(BaseModel):
     source: str
     section: str | None = None
     similarity: float
+    rerank_score: float | None = None
 
 
 class MCPTraceEntry(BaseModel):
@@ -98,5 +99,5 @@ class LLMResponse(BaseModel):
     mcp_tools_used: list[str] = Field(default_factory=list)
     artifacts: list[ArtifactLink] = Field(default_factory=list)
     mcp_trace: list[MCPTraceEntry] = Field(default_factory=list)
-    rag_mode: Literal["off", "on"] = "off"
+    rag_mode: Literal["off", "on", "enhanced"] = "off"
     rag_sources: list[RAGSource] = Field(default_factory=list)
