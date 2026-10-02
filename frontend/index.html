@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>LLM Lab</title>
-  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/style.css?v=chat-memory-2">
 </head>
 <body>
   <header class="topbar">
@@ -19,6 +19,17 @@
   <main>
     <!-- ============ Chat ============ -->
     <section id="panel-chat" class="panel">
+      <div class="chat-heading">
+        <div>
+          <h2 class="chat-title">Мини-чат с RAG</h2>
+          <p class="hint">История и память задачи сохраняются для текущего диалога.</p>
+        </div>
+        <div class="conversation-actions">
+          <span id="chat-conversation-id" class="conversation-id" title="Идентификатор текущего диалога"></span>
+          <button id="chat-new-conversation" type="button">Новый диалог</button>
+        </div>
+      </div>
+
       <div class="controls">
         <label>
           Model
@@ -34,7 +45,7 @@
           <select id="chat-rag-mode">
             <option value="off">Без RAG</option>
             <option value="on">Обычный RAG</option>
-            <option value="enhanced">Улучшенный RAG</option>
+            <option value="enhanced" selected>Улучшенный RAG</option>
           </select>
         </label>
         <label class="checkbox-option" title="Разрешить модели получать текущие данные ОС через Task Manager MCP">
@@ -47,38 +58,48 @@
         </label>
       </div>
 
-      <textarea id="chat-prompt" rows="7" placeholder="Введите prompt…"></textarea>
+      <div class="chat-layout">
+        <div class="chat-main">
+          <div id="chat-messages" class="chat-messages" aria-live="polite">
+            <p id="chat-empty" class="chat-empty">Начните диалог — задайте вопрос по документации.</p>
+          </div>
 
-      <div class="actions">
-        <button id="chat-send" class="primary" type="button">Send</button>
+          <label class="prompt-label" for="chat-prompt">
+            Сообщение
+            <textarea id="chat-prompt" rows="4" placeholder="Введите вопрос… Enter — отправить, Shift+Enter — новая строка"></textarea>
+          </label>
+
+          <div class="actions">
+            <button id="chat-send" class="primary" type="button">Отправить</button>
+          </div>
+        </div>
+
+        <aside id="task-memory" class="task-memory" aria-live="polite">
+          <h2>Память задачи</h2>
+          <div class="memory-field">
+            <strong>Цель</strong>
+            <p id="memory-goal" class="memory-value">—</p>
+          </div>
+          <div class="memory-field">
+            <strong>Ограничения</strong>
+            <ul id="memory-constraints" class="memory-list"><li>—</li></ul>
+          </div>
+          <div class="memory-field">
+            <strong>Термины</strong>
+            <ul id="memory-terms" class="memory-list"><li>—</li></ul>
+          </div>
+          <div class="memory-field">
+            <strong>Уточнения</strong>
+            <ul id="memory-clarifications" class="memory-list"><li>—</li></ul>
+          </div>
+        </aside>
       </div>
 
       <div id="chat-status" class="status" hidden></div>
 
-      <div id="chat-result" hidden>
-        <h2>Ответ</h2>
+      <div id="chat-result" class="latest-response" hidden>
+        <h2>Метрики последнего ответа</h2>
         <pre id="chat-answer" class="answer"></pre>
-        <div id="chat-rag-sources" class="artifacts" hidden>
-          <strong>Источники RAG:</strong>
-          <ul id="chat-rag-source-list"></ul>
-        </div>
-        <div id="chat-grounding" class="artifacts" hidden>
-          <strong>Статус подтверждения:</strong>
-          <span id="chat-grounding-status"></span>
-        </div>
-        <div id="chat-unknown" class="artifacts" hidden>
-          <strong>Почему нет ответа:</strong>
-          <span id="chat-unknown-reason"></span>
-        </div>
-        <div id="chat-citations" class="artifacts" hidden>
-          <strong>Цитаты:</strong>
-          <ol id="chat-citation-list"></ol>
-        </div>
-        <div id="chat-artifacts" class="artifacts" hidden></div>
-        <div id="chat-mcp-trace" class="mcp-trace" hidden>
-          <h2>MCP trace</h2>
-          <ol id="chat-mcp-trace-list"></ol>
-        </div>
         <table class="meta">
           <tbody>
             <tr><th>Provider</th><td id="m-provider"></td></tr>
@@ -138,6 +159,6 @@
     </section>
   </main>
 
-  <script src="/app.js"></script>
+  <script src="/app.js?v=chat-memory-2"></script>
 </body>
 </html>

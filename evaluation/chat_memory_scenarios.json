@@ -1,0 +1,70 @@
+{
+  "description": "Два детерминированных сценария приёмочного тестирования мини-чата с RAG и памятью задачи.",
+  "runtime_answers_excluded": true,
+  "scenarios": [
+    {
+      "id": "inbound_sip_calls",
+      "title": "Настройка входящих SIP-звонков",
+      "goal": "настроить входящие SIP-звонки",
+      "constraints": [
+        "Docker",
+        "локальный Redis",
+        "без LiveKit Cloud"
+      ],
+      "terms": {
+        "сервер": "LiveKit SIP Service"
+      },
+      "messages": [
+        {"turn": 1, "user": "Цель: настроить входящие SIP-звонки. Ограничение: Docker."},
+        {"turn": 2, "user": "Ограничение: локальный Redis."},
+        {"turn": 3, "user": "Термин: сервер = LiveKit SIP Service."},
+        {"turn": 4, "user": "Какие два ресурса нужны для входящего звонка?"},
+        {"turn": 5, "user": "А в Docker?", "follow_up": true},
+        {"turn": 6, "user": "Какой файл конфигурации нужен?"},
+        {"turn": 7, "user": "Ограничение: без LiveKit Cloud."},
+        {"turn": 8, "user": "А что с Redis?", "follow_up": true},
+        {"turn": 9, "user": "Как проверить, что SIP-сервис подключился к комнате?"},
+        {"turn": 10, "user": "И что дальше?", "follow_up": true},
+        {"turn": 11, "user": "Какие параметры нужны для SIP Bridge?"},
+        {"turn": 12, "user": "А это можно настроить через livekit-cli?", "follow_up": true}
+      ],
+      "expected_final_state": {
+        "goal": "настроить входящие SIP-звонки",
+        "constraints": ["Docker", "локальный Redis", "без LiveKit Cloud"],
+        "terms": {"сервер": "LiveKit SIP Service"}
+      }
+    },
+    {
+      "id": "local_livekit_server",
+      "title": "Локальное развёртывание LiveKit Server",
+      "goal": "локально развернуть LiveKit Server",
+      "constraints": [
+        "dev mode",
+        "локально",
+        "без Kubernetes"
+      ],
+      "terms": {
+        "ключи": "API key и secret"
+      },
+      "messages": [
+        {"turn": 1, "user": "Цель: локально развернуть LiveKit Server. Ограничение: dev mode."},
+        {"turn": 2, "user": "Ограничение: локально."},
+        {"turn": 3, "user": "Термин: ключи = API key и secret."},
+        {"turn": 4, "user": "Ограничение: без Kubernetes."},
+        {"turn": 5, "user": "Какая команда запуска нужна?"},
+        {"turn": 6, "user": "А это где запускать?", "follow_up": true},
+        {"turn": 7, "user": "Какие значения ключей использовать?"},
+        {"turn": 8, "user": "А они временные?", "follow_up": true},
+        {"turn": 9, "user": "Что нужно проверить после запуска?"},
+        {"turn": 10, "user": "И что дальше?", "follow_up": true},
+        {"turn": 11, "user": "Как убедиться, что сервер доступен локально?"},
+        {"turn": 12, "user": "А это можно сделать без Kubernetes?", "follow_up": true}
+      ],
+      "expected_final_state": {
+        "goal": "локально развернуть LiveKit Server",
+        "constraints": ["dev mode", "локально", "без Kubernetes"],
+        "terms": {"ключи": "API key и secret"}
+      }
+    }
+  ]
+}

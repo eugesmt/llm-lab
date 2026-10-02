@@ -18,6 +18,8 @@ from app.schemas.llm import RAGSource
 class RetrievedChunk:
     source: RAGSource
     text: str
+    vector_id: int | None = None
+    heading_path: tuple[str, ...] = ()
 
 
 class RAGService:
@@ -61,7 +63,7 @@ class RAGService:
 
                 row = connection.execute(
                     """
-                    SELECT chunk_id, source, section, text
+                    SELECT chunk_id, source, section, text, heading_path
                     FROM chunks
                     WHERE vector_id = ?
                     """,
@@ -72,7 +74,7 @@ class RAGService:
                         f"RAG metadata is missing for vector_id={int(vector_id)}"
                     )
 
-                results.append(self._make_chunk(row, float(similarity)))
+                results.append(self._make_chunk(row, float(similarity), int(vector_id)))
 
         if not enhanced:
             return results
@@ -82,6 +84,7 @@ class RAGService:
             for chunk in results
             if chunk.source.similarity >= self._similarity_threshold
         ]
+        filtered = self._include_section_children(filtered)
 
         query_terms = self._terms(search_question)
         reranked = sorted(
@@ -95,9 +98,61 @@ class RAGService:
                     update={"rerank_score": self._rerank_score(chunk, query_terms)}
                 ),
                 text=chunk.text,
+                vector_id=chunk.vector_id,
+                heading_path=chunk.heading_path,
             )
             for chunk in reranked[: self._top_k]
         ]
+
+    def _include_section_children(
+        self,
+        chunks: list[RetrievedChunk],
+    ) -> list[RetrievedChunk]:
+        """Add short child sections of retrieved structural parent sections.
+
+        Markdown often stores an introductory ``Install`` chunk separately
+        from tiny ``MacOS``/``Linux`` command chunks.  Child chunks keep their
+        own IDs and still compete in the normal reranker/top-k stage.
+        """
+
+        expanded = list(chunks)
+        seen = {chunk.source.chunk_id for chunk in chunks}
+        with sqlite3.connect(self._database_path) as connection:
+            for parent in chunks:
+                if parent.vector_id is None or not parent.heading_path:
+                    continue
+                rows = connection.execute(
+                    """
+                    SELECT vector_id, chunk_id, source, section, text, heading_path
+                    FROM chunks
+                    WHERE source = ? AND vector_id > ?
+                    ORDER BY vector_id
+                    LIMIT 4
+                    """,
+                    (parent.source.source, parent.vector_id),
+                ).fetchall()
+                for row in rows:
+                    child_path = _decode_heading_path(row[5])
+                    if not _is_child_path(parent.heading_path, child_path):
+                        break
+                    chunk_id = str(row[1])
+                    if chunk_id in seen:
+                        continue
+                    seen.add(chunk_id)
+                    expanded.append(
+                        RetrievedChunk(
+                            source=RAGSource(
+                                chunk_id=chunk_id,
+                                source=str(row[2]),
+                                section=str(row[3]) if row[3] is not None else None,
+                                similarity=parent.source.similarity,
+                            ),
+                            text=str(row[4]),
+                            vector_id=int(row[0]),
+                            heading_path=child_path,
+                        )
+                    )
+        return expanded
 
     def context_is_relevant(self, chunks: list[RetrievedChunk]) -> bool:
         """Return whether the best retrieved chunk clears the answer threshold.
@@ -132,6 +187,20 @@ class RAGService:
         mappings = {
             "входящ": "inbound SIP trunk SIP dispatch rule CreateSIPTrunk CreateSIPDispatchRule",
             "docker": "Docker host.docker.internal 172.17.0.1 Redis",
+            "установ": (
+                "install LiveKit media server brew install livekit "
+                "curl get.livekit.io latest release"
+            ),
+            "linux": "Linux curl -sSL https://get.livekit.io bash install LiveKit",
+            "macos": "MacOS brew install livekit",
+            "windows": "Windows download latest LiveKit release GitHub",
+            "dev mode": "livekit-server --dev placeholder API key devkey API secret secret",
+            "режим разработ": "livekit-server --dev placeholder API key devkey API secret secret",
+            "ключ": "API key API secret devkey secret access token",
+            "порт": "ws://localhost:7880 localhost port 7880 LiveKit server",
+            "подключ": "connect client Room access token ws://localhost:7880 example app",
+            "локаль": "local development localhost ws://localhost:7880 livekit-server --dev",
+            "kubernetes": "self-hosting local binary Docker livekit-server deployment",
             "зависим": "Go libopus pkg-config opusfile libsoxr",
             "запис": "Egress room audio video output format",
             "агент": "AgentSession voice agent lifecycle room tools",
@@ -163,7 +232,11 @@ class RAGService:
         return 0.75 * chunk.source.similarity + 0.25 * overlap
 
     @staticmethod
-    def _make_chunk(row: tuple[object, ...], similarity: float) -> RetrievedChunk:
+    def _make_chunk(
+        row: tuple[object, ...],
+        similarity: float,
+        vector_id: int,
+    ) -> RetrievedChunk:
         return RetrievedChunk(
             source=RAGSource(
                 chunk_id=str(row[0]),
@@ -172,6 +245,8 @@ class RAGService:
                 similarity=similarity,
             ),
             text=str(row[3]),
+            vector_id=vector_id,
+            heading_path=_decode_heading_path(row[4]),
         )
 
     def _load_index(self) -> object:
@@ -205,3 +280,17 @@ class RAGService:
             return payload["embeddings"][0]
         except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
             raise ProviderRequestError("Ollama returned an invalid embedding response") from exc
+
+
+def _decode_heading_path(value: object) -> tuple[str, ...]:
+    try:
+        decoded = json.loads(str(value))
+    except json.JSONDecodeError:
+        return ()
+    if not isinstance(decoded, list) or not all(isinstance(item, str) for item in decoded):
+        return ()
+    return tuple(decoded)
+
+
+def _is_child_path(parent: tuple[str, ...], candidate: tuple[str, ...]) -> bool:
+    return len(candidate) > len(parent) and candidate[: len(parent)] == parent

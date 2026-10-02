@@ -7,6 +7,8 @@ into logs or repr output.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,6 +39,9 @@ class Settings(BaseSettings):
     # uses rerank_score; regular RAG uses cosine similarity. Empty context is
     # always insufficient. This value is intentionally separate from the filter.
     rag_context_threshold: float = Field(default=0.60, ge=-1.0, le=1.0)
+
+    # Chat history is stored separately from the document index database.
+    chat_db_path: Path = Path("data/chat.sqlite")
 
     taskmanager_mcp_url: str = "http://127.0.0.1:8090/mcp"
     mcp_timeout_s: float = 30.0

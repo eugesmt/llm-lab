@@ -77,6 +77,7 @@ cp .env.example .env
 | `OBSIDIAN_MCP_API_KEY` | Bearer key for the Obsidian MCP endpoint (never commit or print it) |
 | `MCP_TIMEOUT_S` | timeout одной MCP-операции, сек (по умолчанию `30`) |
 | `MCP_MAX_ROUNDS` | предел циклов модель → инструмент (по умолчанию `10`) |
+| `CHAT_DB_PATH` | отдельная SQLite-база истории и памяти задачи (`data/chat.sqlite`) |
 | `HOST`, `PORT` | адрес сервера (`127.0.0.1`, `8000`) |
 
 Ключи не хранятся в коде/Git и не логируются (читаются как `SecretStr`).
@@ -96,6 +97,8 @@ uv run llm-lab
 | Endpoint | Описание |
 |---|---|
 | `GET /api/models` | каталог моделей с capabilities (`thinking_supported`, допустимый `reasoning_effort`) |
+| `POST /api/conversations` | создать новый диалог с отдельной памятью задачи |
+| `GET /api/conversations/{id}` | получить историю диалога и состояние задачи |
 | `POST /api/chat` | prompt → одной модели; режим `rag_mode=off/on/enhanced`; опционально MCP |
 | `POST /api/benchmark` | один prompt → нескольким моделям (+ `repeats` 1–10); ошибки isolate по запускам |
 
@@ -125,6 +128,32 @@ curl -X POST http://127.0.0.1:8000/api/chat \
 
 Ответ в RAG-режиме дополнительно содержит `rag_sources` с `chunk_id`, source,
 section, similarity и, для enhanced-режима, rerank_score.
+
+## Мини-чат с памятью задачи
+
+Веб-интерфейс создаёт `conversation_id` и передаёт его с каждым сообщением.
+Backend хранит историю в отдельной SQLite-базе, а перед новым ответом:
+
+1. загружает последние 10 сообщений и сохранённое состояние задачи;
+2. обновляет цель, ограничения, термины и явные уточнения;
+3. превращает короткий follow-up вроде «А что с Redis?» в самостоятельный
+   поисковый запрос;
+4. выполняет RAG-поиск и формирует ответ с источниками и цитатами;
+5. сохраняет вопрос, ответ и RAG-метаданные.
+
+Полная история не отправляется модели бесконечно: для prompt используется
+ограниченное окно, а компактная память задачи хранится отдельно. База чата
+`data/chat.sqlite` не является базой метаданных FAISS-индекса и не попадает в
+Git.
+
+Два приёмочных сценария по 12 сообщений описаны в
+`evaluation/chat_memory_scenarios.json`. Они проверяются без реальных API:
+
+```bash
+uv run pytest tests/test_long_chat_scenarios.py -q
+```
+
+Методика и критерии находятся в `evaluation/CHAT_MEMORY_REPORT.md`.
 
 ## Сравнение двух режимов
 

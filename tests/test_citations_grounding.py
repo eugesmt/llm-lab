@@ -69,6 +69,18 @@ class CitationProvider:
         )
 
 
+class ForeignChunkProvider:
+    name = "mock"
+
+    async def chat(self, request: LLMRequest) -> LLMResponse:
+        return LLMResponse(
+            provider=self.name,
+            model=request.model,
+            answer="По данным structural_000492 нужно включить host networking.",
+            latency_ms=1.0,
+        )
+
+
 def _chunk() -> RetrievedChunk:
     return RetrievedChunk(
         source=RAGSource(
@@ -165,6 +177,23 @@ async def test_citation_must_be_a_substring_of_retrieved_chunk() -> None:
         if _field(citation, "quote") not in chunk.text
     ]
     assert invalid_citations == []
+
+
+@pytest.mark.asyncio
+async def test_answer_cannot_reference_chunk_outside_current_results() -> None:
+    rag = RetrievalDouble(chunks=[_chunk()], relevant=True)
+
+    response = await _service(ForeignChunkProvider(), rag).chat(
+        model="mock-fast",
+        prompt="Что делать дальше?",
+        rag_mode="enhanced",
+    )
+
+    assert response.unknown is True
+    assert response.grounded is False
+    assert response.rag_sources == []
+    assert response.citations == []
+    assert "вне текущего RAG-контекста" in (response.unknown_reason or "")
 
 
 @pytest.mark.asyncio

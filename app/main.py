@@ -7,8 +7,10 @@ error handlers together; tests can inject a custom catalog or providers
 
 from __future__ import annotations
 
+import sqlite3
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from threading import RLock
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -30,9 +32,39 @@ from app.providers.openrouter import OpenRouterProvider
 from app.schemas.model import ModelInfo
 from app.services.benchmark import BenchmarkService
 from app.services.llm import LLMService
+from app.services.memory import TaskMemoryService
 from app.services.rag import RAGService
+from app.storage import ChatStore
 
 FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+
+
+def _prepare_chat_store_for_web(store: ChatStore) -> ChatStore:
+    """Make the synchronous store safe for FastAPI's worker/event-loop thread.
+
+    ``ChatStore`` intentionally stays a small synchronous adapter.  FastAPI's
+    TestClient and some ASGI servers can invoke the app on a thread different
+    from the one that constructed the app, while sqlite3 defaults to strict
+    thread affinity.  Rebind the already-initialized connection here without
+    changing the storage component's public contract.
+    """
+
+    connection = getattr(store, "_connection", None)
+    if connection is None:
+        return store
+
+    database = ":memory:" if str(store.path) == ":memory:" else str(store.path)
+    replacement = sqlite3.connect(database, check_same_thread=False)
+    if database == ":memory:":
+        connection.backup(replacement)
+    replacement.row_factory = sqlite3.Row
+    replacement.execute("PRAGMA foreign_keys = ON")
+    if database != ":memory:":
+        replacement.execute("PRAGMA journal_mode = WAL")
+    store._connection = replacement
+    store._lock = RLock()
+    connection.close()
+    return store
 
 
 def _error_response(exc: AppError) -> JSONResponse:
@@ -61,6 +93,7 @@ def create_app(
     providers: Mapping[str, LLMProvider] | None = None,
     taskmanager_mcp: MCPClient | None = None,
     mcp_servers: Mapping[str, MCPClient] | None = None,
+    chat_store: ChatStore | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     catalog = catalog if catalog is not None else catalog_module.MODEL_CATALOG
@@ -135,10 +168,15 @@ def create_app(
         rag_service=rag_service,
     )
 
+    chat_store = _prepare_chat_store_for_web(chat_store or ChatStore(settings.chat_db_path))
+    task_memory_service = TaskMemoryService()
+
     app = FastAPI(title="LLM Lab", version="0.1.0")
     app.state.llm_service = llm_service
     app.state.benchmark_service = BenchmarkService(llm_service)
     app.state.mcp_servers = configured_servers
+    app.state.chat_store = chat_store
+    app.state.task_memory_service = task_memory_service
 
     _register_error_handlers(app)
     app.include_router(models_api.router)
