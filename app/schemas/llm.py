@@ -80,6 +80,13 @@ class RAGSource(BaseModel):
     rerank_score: float | None = None
 
 
+class RAGCitation(BaseModel):
+    source: str
+    section: str | None = None
+    chunk_id: str
+    quote: str
+
+
 class MCPTraceEntry(BaseModel):
     sequence: int
     round: int
@@ -101,3 +108,7 @@ class LLMResponse(BaseModel):
     mcp_trace: list[MCPTraceEntry] = Field(default_factory=list)
     rag_mode: Literal["off", "on", "enhanced"] = "off"
     rag_sources: list[RAGSource] = Field(default_factory=list)
+    citations: list[RAGCitation] = Field(default_factory=list)
+    grounded: bool = False
+    unknown: bool = False
+    unknown_reason: str | None = None

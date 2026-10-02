@@ -204,6 +204,47 @@ function renderRAGSources(mode, sources) {
   container.hidden = false;
 }
 
+function renderGrounding(data) {
+  const grounding = $("chat-grounding");
+  const groundingStatus = $("chat-grounding-status");
+  const unknown = $("chat-unknown");
+  const unknownReason = $("chat-unknown-reason");
+  const citations = $("chat-citations");
+  const citationList = $("chat-citation-list");
+  if (!grounding || !groundingStatus || !unknown || !unknownReason || !citations || !citationList) return;
+
+  const isRag = data.rag_mode && data.rag_mode !== "off";
+  groundingStatus.textContent = isRag
+    ? (data.grounded === true ? "Подтверждён найденными фрагментами" : "Не подтверждён")
+    : "Не используется (режим без RAG)";
+  grounding.hidden = false;
+
+  const reason = typeof data.unknown_reason === "string" ? data.unknown_reason.trim() : "";
+  unknownReason.textContent = reason;
+  unknown.hidden = !reason;
+
+  citationList.replaceChildren();
+  const items = Array.isArray(data.citations) ? data.citations : [];
+  for (const citation of items) {
+    const item = document.createElement("li");
+    const metadata = document.createElement("div");
+    const source = citation && typeof citation.source === "string" ? citation.source : dash;
+    const section = citation && typeof citation.section === "string" && citation.section
+      ? ` · ${citation.section}`
+      : "";
+    const chunkId = citation && typeof citation.chunk_id === "string" ? citation.chunk_id : dash;
+    metadata.textContent = `${source}${section} · ${chunkId}`;
+
+    const quote = document.createElement("blockquote");
+    quote.textContent = citation && typeof citation.quote === "string" && citation.quote
+      ? citation.quote
+      : "Цитата отсутствует";
+    item.append(metadata, quote);
+    citationList.appendChild(item);
+  }
+  citations.hidden = !isRag || items.length === 0;
+}
+
 async function sendChat() {
   const model = selectedModel();
   const prompt = $("chat-prompt").value.trim();
@@ -243,6 +284,7 @@ async function sendChat() {
 
     $("chat-answer").textContent = data.answer;
     renderRAGSources(data.rag_mode, data.rag_sources);
+    renderGrounding(data);
     renderArtifacts(data.artifacts);
     renderMCPTrace(data.mcp_trace);
     const usage = data.usage || {};

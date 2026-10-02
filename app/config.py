@@ -29,7 +29,14 @@ class Settings(BaseSettings):
     rag_index_dir: str = "/home/lab-dev/Projects/rag/rag_lab/indexes/structural"
     rag_initial_top_k: int = Field(default=8, ge=3, le=50)
     rag_top_k: int = Field(default=3, ge=1, le=20)
+    # Candidate filter for enhanced RAG: chunks below this cosine similarity
+    # are removed before heuristic reranking. It is not the answer threshold.
     rag_similarity_threshold: float = Field(default=0.55, ge=-1.0, le=1.0)
+    # Context sufficiency threshold: the best final score must reach this value
+    # for the retrieved context to be considered answer-worthy. Enhanced RAG
+    # uses rerank_score; regular RAG uses cosine similarity. Empty context is
+    # always insufficient. This value is intentionally separate from the filter.
+    rag_context_threshold: float = Field(default=0.60, ge=-1.0, le=1.0)
 
     taskmanager_mcp_url: str = "http://127.0.0.1:8090/mcp"
     mcp_timeout_s: float = 30.0

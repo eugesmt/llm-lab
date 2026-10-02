@@ -20,12 +20,15 @@ class ModelPricing:
 
 
 PRICING: dict[str, ModelPricing] = {
+    # Local Ollama inference has no provider token charge.
+    "qwen3:4b": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
     "deepseek-v4-flash": ModelPricing(input_per_1m=0.44, output_per_1m=1.32),
     "deepseek-v4-pro": ModelPricing(input_per_1m=1.32, output_per_1m=3.96),
     # Free OpenRouter models: zero price, rate-limited instead.
     "inclusionai/ling-3.0-flash-sante:free": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
     "liquid/lfm-2.5-2.6b:free": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
     "google/gemma-4-31b-it:free": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
+    "google/gemma-4-26b-a4b-it:free": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
     "minimax/minimax-m3:free": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
     "nvidia/nemotron-3-ultra-550b-a55b:free": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
     "z-ai/glm-5.2:free": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),

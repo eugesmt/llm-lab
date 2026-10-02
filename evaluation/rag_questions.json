@@ -2,61 +2,93 @@
   {
     "id": "sip_inbound",
     "question": "Как настроить входящий SIP-звонок?",
-    "expected": ["создать SIP Trunk", "создать SIP Dispatch Rule", "направить вызов в LiveKit room"],
-    "sources": ["server-oss/sip/README.md"]
+    "expectation": "Ответ должен описать создание SIP Bridge/SIP Trunk и SIP Dispatch Rule, а также маршрутизацию вызова в комнату LiveKit.",
+    "expected_facts": ["создать SIP Trunk", "создать SIP Dispatch Rule", "направить вызов в LiveKit room"],
+    "sources": ["server-oss/sip/README.md"],
+    "should_unknown": false
   },
   {
     "id": "sip_docker",
     "question": "Как запустить SIP service в Docker?",
-    "expected": ["Redis", "подключение к LiveKit Server", "docker"],
-    "sources": ["server-oss/sip/README.md"]
+    "expectation": "Ответ должен упомянуть Redis, подключение контейнера к LiveKit Server и запуск SIP service в Docker.",
+    "expected_facts": ["Redis", "LiveKit Server", "Docker"],
+    "sources": ["server-oss/sip/README.md"],
+    "should_unknown": false
   },
   {
     "id": "sip_build",
     "question": "Какие зависимости нужны для сборки SIP service?",
-    "expected": ["Go", "libopus", "pkg-config"],
-    "sources": ["server-oss/sip/README.md"]
+    "expectation": "Ответ должен назвать Go и внешние зависимости libopus/pkg-config, необходимые для сборки.",
+    "expected_facts": ["Go", "libopus", "pkg-config"],
+    "sources": ["server-oss/sip/README.md"],
+    "should_unknown": false
   },
   {
     "id": "egress_recording",
     "question": "Как записать аудио и видео из LiveKit-комнаты?",
-    "expected": ["Egress", "room", "output format"],
-    "sources": ["server-oss/egress/README.md"]
+    "expectation": "Ответ должен объяснить, что Egress запускает запись комнаты и позволяет выбрать формат выходного файла.",
+    "expected_facts": ["Egress", "audio", "video", "output format"],
+    "sources": ["server-oss/egress/README.md"],
+    "should_unknown": false
   },
   {
     "id": "agent_session",
     "question": "Что делает AgentSession?",
-    "expected": ["lifecycle", "voice agent", "room"],
-    "sources": ["agents/livekit-agents/README.md"]
+    "expectation": "Ответ должен описать управление жизненным циклом голосового агента, его подключение к комнате и координацию аудио.",
+    "expected_facts": ["lifecycle", "voice agent", "room"],
+    "sources": ["agents/livekit-agents/README.md"],
+    "should_unknown": false
   },
   {
     "id": "room_connection",
     "question": "Как клиент подключается к LiveKit-комнате?",
-    "expected": ["WebSocket", "token", "room"],
-    "sources": ["client-sdks/client-sdk-js/README.md"]
+    "expectation": "Ответ должен назвать подключение к комнате, WebSocket и токен доступа.",
+    "expected_facts": ["WebSocket", "token", "room"],
+    "sources": [
+      "server-oss/livekit/README.md",
+      "client-sdks/client-sdk-js/README.md",
+      "client-sdks/client-sdk-cpp/README.md"
+    ],
+    "should_unknown": false
   },
   {
     "id": "redis_role",
     "question": "Зачем LiveKit Server нужен Redis?",
-    "expected": ["Redis", "состояние", "сервер"],
-    "sources": ["server-oss/livekit/README.md"]
+    "expectation": "Ответ должен объяснить роль Redis в обмене данными и/или хранении состояния LiveKit Server.",
+    "expected_facts": ["Redis", "state", "server"],
+    "sources": [
+      "server-oss/livekit/README.md",
+      "server-oss/ingress/README.md",
+      "server-oss/sip/README.md"
+    ],
+    "should_unknown": false
   },
   {
     "id": "webhooks",
     "question": "Как настроить Webhook в LiveKit?",
-    "expected": ["Webhook", "событие", "URL"],
-    "sources": ["server-oss/livekit/README.md"]
+    "expectation": "Ответ должен описать настройку Webhook, URL и события, если эти сведения есть в найденном контексте.",
+    "expected_facts": ["Webhook", "event", "URL"],
+    "sources": [
+      "server-oss/livekit/README.md",
+      "server-apis/server-sdk-go/README.md",
+      "server-apis/python-sdks/README.md"
+    ],
+    "should_unknown": false
   },
   {
-    "id": "room_tokens",
-    "question": "Как создать токен для подключения к комнате?",
-    "expected": ["access token", "room", "identity"],
-    "sources": ["server-oss/livekit/README.md"]
+    "id": "unknown_billing",
+    "question": "Как подключить оплату и выставлять счета клиентам в LiveKit?",
+    "expectation": "В базе нет сведений об оплате и выставлении счетов; ассистент должен признать недостаток контекста и попросить уточнение.",
+    "expected_facts": [],
+    "sources": [],
+    "should_unknown": true
   },
   {
-    "id": "agents_tools",
-    "question": "Как голосовой агент использует инструменты?",
-    "expected": ["agent", "tool", "function"],
-    "sources": ["agents/livekit-agents/README.md"]
+    "id": "unknown_weather",
+    "question": "Какая погода сегодня в Москве и нужен ли зонт?",
+    "expectation": "В базе нет метеоданных; ассистент не должен выдумывать прогноз и должен перейти в режим «не знаю».",
+    "expected_facts": [],
+    "sources": [],
+    "should_unknown": true
   }
 ]

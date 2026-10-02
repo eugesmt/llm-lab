@@ -122,6 +122,7 @@ def create_app(
         top_k=settings.rag_top_k,
         initial_top_k=settings.rag_initial_top_k,
         similarity_threshold=settings.rag_similarity_threshold,
+        context_threshold=settings.rag_context_threshold,
     )
 
     llm_service = LLMService(

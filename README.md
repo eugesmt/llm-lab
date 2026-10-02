@@ -137,7 +137,24 @@ uv run python evaluation/run_rag_comparison.py
 Скрипт отправляет 10 вопросов в режимах `rag_mode=off`, `rag_mode=on` и
 `rag_mode=enhanced`, сохраняет ответы в `evaluation/rag_comparison.json` и
 считает ожидаемые факты для каждого режима. Файл с вопросами и ожидаемыми
-источниками находится в `evaluation/rag_questions.json`.
+источниками находится в `evaluation/rag_questions.json`. Для каждого вопроса
+также указаны `expectation`, `expected_facts` и `should_unknown`.
+
+## Проверка источников и цитат
+
+Для задания «Цитаты, источники и анти-галлюцинации» используется отдельный
+скрипт:
+
+```bash
+uv run python evaluation/run_grounding_evaluation.py
+```
+
+Он проверяет 10 вопросов, включая два вопроса вне области документации, и
+сохраняет результат в `evaluation/grounding_evaluation.json`. Проверяются
+наличие источника, цитаты, непустого `quote`, связь цитаты с найденным
+`chunk_id`, дословность цитаты, смысловая близость ответа и цитат, а также
+режим «не знаю». Подробное описание находится в
+`evaluation/GROUNDING_REPORT.md`.
 
 Ответ:
 

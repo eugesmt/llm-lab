@@ -29,6 +29,7 @@ class RAGService:
         top_k: int,
         initial_top_k: int,
         similarity_threshold: float,
+        context_threshold: float,
     ) -> None:
         self._index_path = Path(index_dir) / "index.faiss"
         self._database_path = Path(index_dir) / "chunks.sqlite"
@@ -37,6 +38,7 @@ class RAGService:
         self._top_k = top_k
         self._initial_top_k = initial_top_k
         self._similarity_threshold = similarity_threshold
+        self._context_threshold = context_threshold
         self._index: object | None = None
 
     async def retrieve(self, question: str, enhanced: bool = False) -> list[RetrievedChunk]:
@@ -80,8 +82,6 @@ class RAGService:
             for chunk in results
             if chunk.source.similarity >= self._similarity_threshold
         ]
-        if not filtered and results:
-            filtered = results[:1]
 
         query_terms = self._terms(search_question)
         reranked = sorted(
@@ -98,6 +98,31 @@ class RAGService:
             )
             for chunk in reranked[: self._top_k]
         ]
+
+    def context_is_relevant(self, chunks: list[RetrievedChunk]) -> bool:
+        """Return whether the best retrieved chunk clears the answer threshold.
+
+        Candidate filtering and context sufficiency are deliberately separate:
+        ``_similarity_threshold`` controls which enhanced-search candidates stay
+        in the pool, while ``_context_threshold`` decides whether the resulting
+        context is strong enough to support an answer.  Enhanced results use
+        their computed rerank score; regular results use FAISS cosine similarity.
+        An empty result is never considered sufficient.
+        """
+        if not chunks:
+            return False
+
+        best_score = max(self._context_score(chunk) for chunk in chunks)
+        return best_score >= self._context_threshold
+
+    @staticmethod
+    def _context_score(chunk: RetrievedChunk) -> float:
+        """Use the score that actually determined the final result ordering."""
+        return (
+            chunk.source.rerank_score
+            if chunk.source.rerank_score is not None
+            else chunk.source.similarity
+        )
 
     @staticmethod
     def rewrite_query(question: str) -> str:
