@@ -24,6 +24,7 @@ from app.errors import AppError
 from app.mcp.client import MCPClient, StreamableHTTPMCPClient, TaskManagerMCPClient
 from app.providers.base import LLMProvider
 from app.providers.deepseek import DeepSeekProvider
+from app.providers.ollama import OllamaProvider
 from app.providers.openai import OpenAIProvider
 from app.providers.openrouter import OpenRouterProvider
 from app.schemas.model import ModelInfo
@@ -81,6 +82,10 @@ def create_app(
                 api_key=settings.openrouter_api_key.get_secret_value()
                 if settings.openrouter_api_key
                 else None,
+                timeout_s=settings.request_timeout_s,
+            ),
+            "ollama": OllamaProvider(
+                base_url=settings.ollama_base_url,
                 timeout_s=settings.request_timeout_s,
             ),
         }

@@ -35,6 +35,7 @@ from app.errors import (
 )
 from app.providers.deepseek import DeepSeekProvider
 from app.providers.mock import MockProvider
+from app.providers.ollama import OllamaProvider
 from app.providers.openai import OpenAIProvider
 from app.providers.openrouter import OpenRouterProvider
 from app.schemas.llm import LLMMessage, LLMRequest, ToolCompletionRequest, ToolDefinition
@@ -111,6 +112,27 @@ def sdk_error(exc_cls: type[Exception]) -> Exception:
         NotFoundError: 404,
     }.get(exc_cls, 500)
     return exc_cls("boom", response=httpx.Response(status, request=request), body=None)
+
+
+def test_ollama_request_uses_local_model_without_api_key() -> None:
+    completions = FakeCompletions(make_completion())
+    provider = OllamaProvider(
+        base_url="http://127.0.0.1:11434",
+        timeout_s=5,
+        client=FakeClient(completions),
+    )
+
+    response = asyncio.run(
+        provider.chat(LLMRequest(model="llm-lab-sre:latest", prompt="diagnose"))
+    )
+
+    assert completions.kwargs == {
+        "model": "llm-lab-sre:latest",
+        "messages": [{"role": "user", "content": "diagnose"}],
+    }
+    assert response.provider == "ollama"
+
+
 
 
 @pytest.mark.parametrize(

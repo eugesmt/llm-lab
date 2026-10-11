@@ -20,6 +20,8 @@ class ModelPricing:
 
 
 PRICING: dict[str, ModelPricing] = {
+    # Local Ollama inference has no provider token charge.
+    "llm-lab-sre:latest": ModelPricing(input_per_1m=0.0, output_per_1m=0.0),
     "deepseek-v4-flash": ModelPricing(input_per_1m=0.44, output_per_1m=1.32),
     "deepseek-v4-pro": ModelPricing(input_per_1m=1.32, output_per_1m=3.96),
     # Free OpenRouter models: zero price, rate-limited instead.

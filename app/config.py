@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # -> provider call (provider SDK clients receive the same value).
     request_timeout_s: float = 120.0
 
+    ollama_base_url: str = "http://127.0.0.1:11434"
+
     taskmanager_mcp_url: str = "http://127.0.0.1:8090/mcp"
     mcp_timeout_s: float = 30.0
     mcp_max_rounds: int = Field(default=10, ge=2, le=10)

@@ -107,6 +107,25 @@ curl -X POST http://127.0.0.1:8000/api/chat \
   -d '{"model": "deepseek-v4-flash", "prompt": "Привет!", "reasoning_effort": "low", "mcp_servers": []}'
 ```
 
+## Оптимизация локальной LLM для SRE-диагностики
+
+Для первичной диагностики SRE-инцидентов подготовлен профиль
+`llm-lab-sre:latest`: Qwen2.5 3B Instruct без reasoning/thinking, `temperature=0.1`,
+`max tokens=192`, окно контекста 4096 и безопасный предметный system prompt
+для первичной SRE-диагностики без изменения системы.
+
+Создать профиль и воспроизвести сравнение baseline/optimized:
+
+```bash
+ollama create llm-lab-sre:latest -f ollama/Modelfile.sre
+uv run python evaluation/run_local_optimization.py
+```
+
+Скрипт оценивает пять фиксированных инцидентов по открытой рубрике (факты,
+структура, краткость), а из native Ollama API сохраняет latency, число токенов,
+tokens/s, объём модели в RAM/VRAM и фактическое окно контекста. Результаты и
+методика описаны в `evaluation/LOCAL_LLM_OPTIMIZATION_REPORT.md`.
+
 Ответ:
 
 ```json

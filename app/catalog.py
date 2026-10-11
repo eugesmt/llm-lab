@@ -14,6 +14,13 @@ from app.schemas.model import ModelInfo
 
 MODEL_CATALOG: list[ModelInfo] = [
     ModelInfo(
+        id="llm-lab-sre:latest",
+        provider="ollama",
+        display_name="Qwen2.5 3B Instruct SRE optimized (local)",
+        thinking_supported=False,
+        reasoning_effort=[],
+    ),
+    ModelInfo(
         id="deepseek-v4-flash",
         provider="deepseek",
         display_name="DeepSeek V4 Flash",

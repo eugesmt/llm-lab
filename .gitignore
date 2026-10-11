@@ -7,10 +7,19 @@ __pycache__/
 # Environment / secrets
 .env
 
+# Local runtime data
+data/*.sqlite
+data/*.sqlite-shm
+data/*.sqlite-wal
+
 # Tooling caches
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+
+# Generated evaluation output from other experiment branches
+evaluation/rag_comparison.json
+evaluation/grounding_evaluation.json
 
 # Agent workspace
 .zcode/
